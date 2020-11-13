@@ -1,0 +1,15 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/camino
+camino.so
+camino.dylib
+camino.dll
+camino.a
+camino.lib
+camino-test-*
+*.exe
+*.o
+*.obj
+*.lst

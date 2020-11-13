@@ -1,0 +1,44 @@
+{
+    "name": "camino",
+    "description": "Flexible habit tracker",
+    "license": "MIT",
+    "authors": [
+        "Ryan Frame"
+    ],
+    "copyright": "Copyright © 2020 Ryan Frame",
+    "dependencies": {
+        "std_data_json": "~>0.18.5",
+        "sumtype": "~>0.10.2"
+    },
+    "configurations": [
+        {
+            "name": "executable",
+            "targetType": "executable",
+            "excludedSourceFiles": [
+                "source/ut_main.d"
+            ]
+        },
+        {
+            "name": "unittest",
+            "targetType": "executable",
+            "dependencies": {
+                "unit-threaded": "~>1.0.11"
+            },
+            "mainSourceFile": "source/ut_main.d",
+            "excludedSourceFiles": [
+                "source/main.d"
+            ]
+        }
+    ],
+    "dflags": [
+        "-preview=dip25",
+        "-preview=dip1000",
+        "-preview=dip1008",
+        "-preview=fieldwise",
+        "-preview=markdown",
+        "-preview=fixAliasThis",
+        "-preview=dtorfields",
+        "-preview=rvaluerefparam",
+        "-preview=in"
+    ]
+}
