@@ -114,6 +114,8 @@ struct Habit {
 
 @("Parse simple habit schedules.")
 unittest {
+    import std.datetime.systime : Clock;
+
     auto habit = Habit("daily", "Eat lunch");
     assert(habit.schedule.tryMatch!(s => s == Repeat.Daily));
     habit = Habit("weekly", "Read a book");
@@ -122,7 +124,13 @@ unittest {
     assert(habit.schedule.tryMatch!(s => s == Repeat.Monthly));
 
     habit = Habit("Tue", "Get out of bed");
-    // TODO: assert
+    assert(habit.schedule.tryMatch!((SpecialRepeat s) =>
+        s == SpecialRepeat(
+            nextInstanceDate(cast(Date)Clock.currTime(), "Tue"),
+            1,
+            false
+        ))
+    );
 
     assertThrown(Habit("other", "There is no other"));
 }
