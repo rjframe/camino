@@ -1,7 +1,7 @@
 module camino.habit;
 
 import std.algorithm : startsWith;
-import std.datetime.date : Date;
+import std.datetime.date : Date, DayOfWeek;
 import std.exception : enforce;
 
 version(unittest) import std.exception : assertThrown;
@@ -85,7 +85,6 @@ struct Habit {
             // sense to me so that's all we're supporting right now.
             assert(0, "Unimplemented.");
         } else {
-            // TODO: Support specific days.
             switch (schedule) {
                 case "daily":
                     return Schedule(Repeat.Daily);
@@ -94,7 +93,18 @@ struct Habit {
                 case "monthly":
                     return Schedule(Repeat.Monthly);
                 default:
-                    throw new Exception("Invalid schedule unit: " ~ schedule);
+                    import std.datetime.systime : Clock;
+
+                    enforce(schedule.isDayOfWeek(),
+                        "Invalid schedule unit: " ~ schedule
+                    );
+
+                    auto nextDate = nextInstanceDate(
+                        cast(Date)Clock.currTime(),
+                        schedule
+                    );
+
+                    return Schedule(SpecialRepeat(nextDate, 1, false));
             }
         }
 
@@ -136,4 +146,75 @@ unittest {
 
     habit = Habit("-Mon", "Start the week");
     // TODO: assert
+}
+
+
+private:
+
+/** Return true if the provided string matches a day of the week; otherwise,
+    false.
+
+    Any unique abbreviation is acceptable; "Mon", "Mond", "M" all match Monday.
+    However, "S" will return false.
+*/
+bool isDayOfWeek(string day) {
+    // TODO: Should this be an assert/enforce here? It will error later on
+    // toDayOfWeek().
+    // TODO: Allow lowercase
+    if (day.length == 0) return false;
+    return "Monday".startsWith(day)
+        || ("Tuesday".startsWith(day) && day.length > 1)
+        || "Wednesday".startsWith(day)
+        || ("Thursday".startsWith(day) && day.length > 1)
+        || "Friday".startsWith(day)
+        || ("Saturday".startsWith(day) && day.length > 1)
+        || ("Sunday".startsWith(day) && day.length > 1);
+}
+
+// Separating this from isDayOfWeek means we parse day strings twice for every
+// day-specific habit; we're not likely to ever have enough habits for that to
+// be noticeable and we get cleaner code.
+DayOfWeek toDayOfWeek(string day) {
+    enforce(day.length > 0, "No day provided.");
+
+    // TODO: Allow lowercase
+    if ("Monday".startsWith(day)) {
+        return DayOfWeek.mon;
+    } else if ("Tuesday".startsWith(day)) {
+        return DayOfWeek.tue;
+    } else if ("Wednesday".startsWith(day)) {
+        return DayOfWeek.wed;
+    } else if ("Thursday".startsWith(day)) {
+        return DayOfWeek.thu;
+    } else if ("Friday".startsWith(day)) {
+        return DayOfWeek.fri;
+    } else if ("Saturday".startsWith(day)) {
+        return DayOfWeek.sat;
+    } else if ("Sunday".startsWith(day)) {
+        return DayOfWeek.sun;
+    } else {
+        throw new Exception("Unrecognized day: " ~ day);
+    }
+}
+
+Date nextInstanceDate(Date now, string day) {
+    import core.time : days;
+    import std.datetime.date : daysToDayOfWeek;
+
+    auto diff = daysToDayOfWeek(now.dayOfWeek(), day.toDayOfWeek());
+    return cast(Date)now + diff.days;
+}
+
+@("nextInstanceDate calculates the date of the next-occuring day of week.")
+unittest {
+    import core.time : days;
+
+    auto date = Date(2000, 1, 1);
+    assert(date.dayOfWeek() == DayOfWeek.sat);
+
+    auto daylist = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"];
+
+    for (int i = 0; i < daylist.length; ++i) {
+        assert(nextInstanceDate(date, daylist[i]) == date + i.days);
+    }
 }
