@@ -1,4 +1,4 @@
-# Camino Habit Tracker
+# Camino
 
 Flexible command-line habit tracking.
 
@@ -80,12 +80,14 @@ An example habits file:
 # Anything after a '#' is a comment, but it must begin the line.
 
 #Schedule   Description         Goal
+
 daily       Eat lunch
+Tue         Clean house         2 rooms
+daily       Caloric intake      <2501 calories
+daily       Get out of bed      <6:31
 
 # Do this every other day.
 2 days      Clean litterbox
-
-Tue         Clean house         2 rooms
 
 # Do this twice a day.
 2 daily     Practice guitar
@@ -96,12 +98,8 @@ weekly      Read a book         500 pages
 # Three exercises, three times a day.
 3 daily     Spanish             3 exercises
 
-daily       Caloric intake      <2501 calories
-
-# The '-' makes it an undesireable habit. It only matters in reports.
+# The '-' makes it an undesireable habit. It only matters for reporting.
 -daily      Sleep in
-
-daily       Get out of bed      <6:31
 ```
 
 Habit tracking will likely be in a JSON file, so you can easily edit it if
@@ -112,6 +110,8 @@ See [Design.md](Design.md) for the probable command-line interface.
 
 
 ### Known Issues
+
+It doesn't work yet!
 
 
 ## Contributing
@@ -130,6 +130,8 @@ Your name here?
 ## Contact
 
 - Email: <code@ryanjframe.com>
+- Website: <[www.ryanjframe.com](https://www.ryanjframe.com)>
+- diaspora*: <rjframe@diasp.org>
 
 
 ## Related Projects
