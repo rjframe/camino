@@ -77,39 +77,21 @@ struct Habit {
 
             auto repeatType = schedule[splitIdx+1 .. $];
 
-            switch (repeatType) {
-                case "days":
-                    return Schedule(SpecialRepeat(
-                        RepeatInterval(Repeat.Daily),
-                        number,
-                        1,
-                        false
-                    ));
-                case "weeks":
-                    return Schedule(SpecialRepeat(
-                        RepeatInterval(Repeat.Weekly),
-                        number,
-                        1,
-                        false
-                    ));
-                case "months":
-                    return Schedule(SpecialRepeat(
-                        RepeatInterval(Repeat.Monthly),
-                        number,
-                        1,
-                        false
-                    ));
-                default:
-                    enforce(isDayOfWeek(repeatType),
-                        "Invalid schedule unit: " ~ repeatType
-                    );
+            if (repeatType.isRepeatInterval()) {
+                return Schedule(SpecialRepeat(
+                    RepeatInterval(repeatType.toRepeat()), number, 1, false
+                ));
+            } else {
+                enforce(isDayOfWeek(repeatType),
+                    "Invalid schedule unit: " ~ repeatType
+                );
 
-                    return Schedule(SpecialRepeat(
-                        RepeatInterval(repeatType.toDayOfWeek()),
-                        number,
-                        1,
-                        false
-                    ));
+                return Schedule(SpecialRepeat(
+                    RepeatInterval(repeatType.toDayOfWeek()),
+                    number,
+                    1,
+                    false
+                ));
             }
         } else if (schedule.startsWith('-')) {
             // -daily and actual days ("-Wed") are currently all that make
@@ -132,24 +114,19 @@ struct Habit {
                 ));
             }
         } else {
-            switch (schedule) {
-                case "daily":
-                    return Schedule(Repeat.Daily);
-                case "weekly":
-                    return Schedule(Repeat.Weekly);
-                case "monthly":
-                    return Schedule(Repeat.Monthly);
-                default:
-                    enforce(schedule.isDayOfWeek(),
-                        "Invalid schedule unit: " ~ schedule
-                    );
+            if (schedule.isRepeatInterval()) {
+                return Schedule(schedule.toRepeat());
+            } else {
+                enforce(schedule.isDayOfWeek(),
+                    "Invalid schedule unit: " ~ schedule
+                );
 
-                    return Schedule(SpecialRepeat(
-                        RepeatInterval(schedule.toDayOfWeek()),
-                        1,
-                        1,
-                        false
-                    ));
+                return Schedule(SpecialRepeat(
+                    RepeatInterval(schedule.toDayOfWeek()),
+                    1,
+                    1,
+                    false
+                ));
             }
         }
 
@@ -229,6 +206,7 @@ bool isDayOfWeek(string day) {
 // Separating this from isDayOfWeek means we parse day strings twice for every
 // day-specific habit; we're not likely to ever have enough habits for that to
 // be noticeable and we get cleaner code.
+// TODO: Use an optional type?
 DayOfWeek toDayOfWeek(string day) {
     enforce(day.length > 0, "No day provided.");
 
@@ -249,5 +227,24 @@ DayOfWeek toDayOfWeek(string day) {
         return DayOfWeek.sun;
     } else {
         throw new Exception("Unrecognized day: " ~ day);
+    }
+}
+
+// TODO: See the comments for toDayOfWeek() -> same problems.
+bool isRepeatInterval(string interval) {
+    return (interval == "days" || interval == "daily"
+        || interval == "weeks" || interval == "weekly"
+        || interval == "months" || interval == "monthly");
+}
+
+Repeat toRepeat(string interval) {
+    if (interval == "days" || interval == "daily") {
+        return Repeat.Daily;
+    } else if (interval == "weeks" || interval == "weekly") {
+        return Repeat.Weekly;
+    } else if (interval == "months" || interval == "monthly") {
+        return Repeat.Monthly;
+    } else {
+        throw new Exception("Invalid repeat interval: " ~ interval);
     }
 }
