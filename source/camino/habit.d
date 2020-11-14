@@ -72,21 +72,44 @@ struct Habit {
                 "A number in the schedule must be followed by a unit."
             );
 
-            // TODO: Catch and rethrow parse error? Probably just let it pass.
+            // TODO: Catch and rethrow parse error or let it pass?
             auto number = schedule[0..splitIdx].to!int;
 
-            // TODO: Support "2 Mon" for every other Monday, etc.
-            switch (schedule[splitIdx+1 .. $]) {
+            auto repeatType = schedule[splitIdx+1 .. $];
+
+            switch (repeatType) {
                 case "days":
-                    return Schedule(Repeat.Daily);
+                    return Schedule(SpecialRepeat(
+                        RepeatInterval(Repeat.Daily),
+                        number,
+                        1,
+                        false
+                    ));
                 case "weeks":
-                    return Schedule(Repeat.Weekly);
+                    return Schedule(SpecialRepeat(
+                        RepeatInterval(Repeat.Weekly),
+                        number,
+                        1,
+                        false
+                    ));
                 case "months":
-                    return Schedule(Repeat.Monthly);
+                    return Schedule(SpecialRepeat(
+                        RepeatInterval(Repeat.Monthly),
+                        number,
+                        1,
+                        false
+                    ));
                 default:
-                    throw new Exception(
-                        "Invalid schedule unit: " ~ schedule[splitIdx+1 .. $]
+                    enforce(isDayOfWeek(repeatType),
+                        "Invalid schedule unit: " ~ repeatType
                     );
+
+                    return Schedule(SpecialRepeat(
+                        RepeatInterval(repeatType.toDayOfWeek()),
+                        number,
+                        1,
+                        false
+                    ));
             }
         } else if (schedule.startsWith('-')) {
             // -daily and actual days ("-Wed") are currently all that make
