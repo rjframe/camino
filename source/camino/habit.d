@@ -251,25 +251,3 @@ DayOfWeek toDayOfWeek(string day) {
         throw new Exception("Unrecognized day: " ~ day);
     }
 }
-
-Date nextInstanceDate(Date now, string day) {
-    import core.time : days;
-    import std.datetime.date : daysToDayOfWeek;
-
-    auto diff = daysToDayOfWeek(now.dayOfWeek(), day.toDayOfWeek());
-    return cast(Date)now + diff.days;
-}
-
-@("nextInstanceDate calculates the date of the next-occuring day of week.")
-unittest {
-    import core.time : days;
-
-    auto date = Date(2000, 1, 1);
-    assert(date.dayOfWeek() == DayOfWeek.sat);
-
-    auto daylist = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"];
-
-    for (int i = 0; i < daylist.length; ++i) {
-        assert(nextInstanceDate(date, daylist[i]) == date + i.days);
-    }
-}
