@@ -15,9 +15,17 @@ enum Repeat {
     Monthly,
 }
 
+/** Describes the repeat method of a `SpecialRepeat` object. */
+alias RepeatInterval = SumType!(Repeat, DayOfWeek);
+
 struct SpecialRepeat {
-    Date next;
-    int numberPerDay;
+    RepeatInterval interval;
+    /** Specifies every three days, every other week, etc. */
+    int numberOfIntervals;
+    // TODO: This is set in the goals field; should it be in this struct?
+    int numberPerInstance;
+    // TODO doc+assert: An interval of type Repeat will have a DailyNegative;
+    // I'll always use this instead.
     bool negative;
 }
 
@@ -93,18 +101,16 @@ struct Habit {
                 case "monthly":
                     return Schedule(Repeat.Monthly);
                 default:
-                    import std.datetime.systime : Clock;
-
                     enforce(schedule.isDayOfWeek(),
                         "Invalid schedule unit: " ~ schedule
                     );
 
-                    auto nextDate = nextInstanceDate(
-                        cast(Date)Clock.currTime(),
-                        schedule
-                    );
-
-                    return Schedule(SpecialRepeat(nextDate, 1, false));
+                    return Schedule(SpecialRepeat(
+                        RepeatInterval(schedule.toDayOfWeek()),
+                        1,
+                        1,
+                        false
+                    ));
             }
         }
 
@@ -114,8 +120,6 @@ struct Habit {
 
 @("Parse simple habit schedules.")
 unittest {
-    import std.datetime.systime : Clock;
-
     auto habit = Habit("daily", "Eat lunch");
     assert(habit.schedule.tryMatch!(s => s == Repeat.Daily));
     habit = Habit("weekly", "Read a book");
@@ -125,12 +129,8 @@ unittest {
 
     habit = Habit("Tue", "Get out of bed");
     assert(habit.schedule.tryMatch!((SpecialRepeat s) =>
-        s == SpecialRepeat(
-            nextInstanceDate(cast(Date)Clock.currTime(), "Tue"),
-            1,
-            false
-        ))
-    );
+        s == SpecialRepeat(RepeatInterval(DayOfWeek.tue), 1, 1, false)
+    ));
 
     assertThrown(Habit("other", "There is no other"));
 }
@@ -138,13 +138,19 @@ unittest {
 @("Parse non-simple repeating schedules.")
 unittest {
     auto habit = Habit("2 days", "Eat dessert");
-    // TODO: assert
+    assert(habit.schedule.tryMatch!(s =>
+        s == SpecialRepeat(RepeatInterval(Repeat.Daily), 2, 1, false)
+    ));
 
     habit = Habit("3 weeks", "Run a marathon");
-    // TODO: assert
+    assert(habit.schedule.tryMatch!(s =>
+        s == SpecialRepeat(RepeatInterval(Repeat.Weekly), 3, 1, false)
+    ));
 
     habit = Habit("3 Wed", "Get out of bed");
-    // TODO: assert
+    assert(habit.schedule.tryMatch!(s =>
+        s == SpecialRepeat(RepeatInterval(DayOfWeek.wed), 3, 1, false)
+    ));
 }
 
 @("Parse negative schedules")
