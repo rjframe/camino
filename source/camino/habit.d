@@ -114,7 +114,23 @@ struct Habit {
         } else if (schedule.startsWith('-')) {
             // -daily and actual days ("-Wed") are currently all that make
             // sense to me so that's all we're supporting right now.
-            assert(0, "Unimplemented.");
+
+            auto sched = schedule[1..$];
+
+            if (sched == "daily") {
+                return Schedule(Repeat.DailyNegative);
+            } else {
+                enforce(sched.isDayOfWeek(),
+                    "Invalid schedule unit: " ~ sched
+                );
+
+                return Schedule(SpecialRepeat(
+                    RepeatInterval(sched.toDayOfWeek()),
+                    1,
+                    1,
+                    true
+                ));
+            }
         } else {
             switch (schedule) {
                 case "daily":
@@ -179,10 +195,12 @@ unittest {
 @("Parse negative schedules")
 unittest {
     auto habit = Habit("-daily", "Go to work");
-    // TODO: assert
+    assert(habit.schedule.tryMatch!(s => s == Repeat.DailyNegative));
 
     habit = Habit("-Mon", "Start the week");
-    // TODO: assert
+    assert(habit.schedule.tryMatch!(s =>
+        s == SpecialRepeat(RepeatInterval(DayOfWeek.mon), 1, 1, true)
+    ));
 }
 
 
