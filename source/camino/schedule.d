@@ -31,7 +31,7 @@ struct SpecialRepeat {
 
 alias Schedule = SumType!(Repeat, SpecialRepeat);
 
-Schedule parse(string schedule) {
+Schedule parseSchedule(string schedule) {
     import std.uni : isNumber;
     import std.string : indexOf;
     import std.conv : to;
@@ -106,37 +106,37 @@ Schedule parse(string schedule) {
 
 @("Parse simple habit schedules.")
 unittest {
-    assert(parse("daily").tryMatch!(s => s == Repeat.Daily));
-    assert(parse("weekly").tryMatch!(s => s == Repeat.Weekly));
-    assert(parse("monthly").tryMatch!(s => s == Repeat.Monthly));
+    assert(parseSchedule("daily").tryMatch!(s => s == Repeat.Daily));
+    assert(parseSchedule("weekly").tryMatch!(s => s == Repeat.Weekly));
+    assert(parseSchedule("monthly").tryMatch!(s => s == Repeat.Monthly));
 
-    assert(parse("Tue").tryMatch!(s =>
+    assert(parseSchedule("Tue").tryMatch!(s =>
         s == SpecialRepeat(RepeatInterval(DayOfWeek.tue), 1, 1, false)
     ));
 
-    assertThrown(parse("other"));
+    assertThrown(parseSchedule("other"));
 }
 
 @("Parse non-simple repeating schedules.")
 unittest {
-    assert(parse("2 days").tryMatch!(s =>
+    assert(parseSchedule("2 days").tryMatch!(s =>
         s == SpecialRepeat(RepeatInterval(Repeat.Daily), 2, 1, false)
     ));
 
-    assert(parse("3 weeks").tryMatch!(s =>
+    assert(parseSchedule("3 weeks").tryMatch!(s =>
         s == SpecialRepeat(RepeatInterval(Repeat.Weekly), 3, 1, false)
     ));
 
-    assert(parse("3 Wed").tryMatch!(s =>
+    assert(parseSchedule("3 Wed").tryMatch!(s =>
         s == SpecialRepeat(RepeatInterval(DayOfWeek.wed), 3, 1, false)
     ));
 }
 
 @("Parse negative schedules")
 unittest {
-    assert(parse("-daily").tryMatch!(s => s == Repeat.DailyNegative));
+    assert(parseSchedule("-daily").tryMatch!(s => s == Repeat.DailyNegative));
 
-    assert(parse("-Mon").tryMatch!(s =>
+    assert(parseSchedule("-Mon").tryMatch!(s =>
         s == SpecialRepeat(RepeatInterval(DayOfWeek.mon), 1, 1, true)
     ));
 }

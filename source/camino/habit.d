@@ -1,5 +1,6 @@
 module camino.habit;
 
+import camino.goal;
 import camino.schedule;
 
 import std.exception : enforce;
@@ -10,16 +11,18 @@ import sumtype;
 struct Habit {
     Schedule schedule;
     string description;
-    string goal; // TODO: type
+    Goal goal; // TODO: type
 
     this(string schedule, string description, string goal = "") {
         // The shortest valid length is for shorthand days (like "Tue").
         enforce(schedule.length >= 3, "Invalid schedule: " ~ schedule);
-        // TODO: enforce on goal. Also for description > 0?
+        enforce(description.length > 0,
+            "No habit description provided in: " ~ schedule
+        );
 
-        this.schedule = parse(schedule);
+        this.schedule = parseSchedule(schedule);
         this.description = description;
-        //this.goal = parse(goal);
+        this.goal = parseGoal(goal);
     }
 
     // Icky but convenient.
