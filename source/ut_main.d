@@ -1,6 +1,6 @@
-//import unit_threaded.runner : runTestsMain;
-import unit_threaded;
+import unit_threaded.runner : runTestsMain;
 
 mixin runTestsMain!(
-    "camino.habit"
+    "camino.habit",
+    "camino.schedule"
 );
