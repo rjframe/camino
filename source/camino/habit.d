@@ -144,7 +144,7 @@ unittest {
     assert(habit.schedule.tryMatch!(s => s == Repeat.Monthly));
 
     habit = Habit("Tue", "Get out of bed");
-    assert(habit.schedule.tryMatch!((SpecialRepeat s) =>
+    assert(habit.schedule.tryMatch!(s =>
         s == SpecialRepeat(RepeatInterval(DayOfWeek.tue), 1, 1, false)
     ));
 
