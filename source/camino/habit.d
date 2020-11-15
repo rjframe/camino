@@ -14,8 +14,8 @@ struct Habit {
     Goal goal; // TODO: type
 
     this(string schedule, string description, string goal = "") {
-        // The shortest valid length is for shorthand days (like "Tue").
-        enforce(schedule.length >= 3, "Invalid schedule: " ~ schedule);
+        // The shortest valid length is for shorthand days (like "Tu").
+        enforce(schedule.length >= 2, "Invalid schedule: " ~ schedule);
         enforce(description.length > 0,
             "No habit description provided in: " ~ schedule
         );
