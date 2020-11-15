@@ -32,20 +32,20 @@ int main(string[] args) {
 
 Habit[] readHabits(string filePath) {
     import std.stdio : File;
-    import std.string : entab;
+    import std.string : entab, strip;
 
     auto file = File(filePath, "r");
     Habit[] habits;
     char[] buf;
 
     while (file.readln(buf)) {
-        if (buf[0] == '#') continue;
+        if (buf[0] == '#' || buf[0] == '\n') continue;
         string[] fields;
         fields.reserve(3);
 
         foreach (field; buf.entab(4).splitter('\t')) {
             if (field == "") continue;
-            fields ~= field.dup;
+            fields ~= field.strip().dup();
         }
 
         if (fields.length != 2 && fields.length != 3) {
