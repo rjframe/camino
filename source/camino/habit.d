@@ -42,4 +42,11 @@ struct Habit {
         }
     }
 
+    /** Determine whether two `Habit`s are equal.
+
+        Habits are identified by the content of their descriptions.
+    */
+    bool opEquals()(auto ref const typeof(this) other) const {
+        return this.description == other.description;
+    }
 }
