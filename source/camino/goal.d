@@ -8,6 +8,7 @@ import std.typecons : Tuple, tuple;
 
 version(unittest) import std.exception : assertThrown;
 
+import asdf;
 import sumtype;
 
 enum Ordering {
@@ -16,12 +17,22 @@ enum Ordering {
     GreaterThan
 }
 
-alias GoalValue = SumType!(int, TimeOfDay);
+alias GoalValue = SumType!(int, TimeOfDay, bool);
 
 struct Goal {
     Ordering ordering;
     GoalValue goal;
     string unit;
+
+    /** Deserialize an `Asdf` object into a `Goal`.
+
+        We do not validate the newly created Goal against the relevant `Habit`
+        because we may be reading an older version of a habit that no longer
+        matches its current definition (or may no longer exist).
+    */
+    static typeof(this) deserialize(Asdf data) {
+        return parseGoal(data.get(""));
+    }
 }
 
 Goal parseGoal(string goal) {
