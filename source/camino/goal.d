@@ -1,7 +1,5 @@
 module camino.goal;
 
-import std.string : startsWith;
-import std.conv : to;
 import std.datetime.date : TimeOfDay;
 import std.exception : enforce;
 import std.typecons : Tuple, tuple;
@@ -35,9 +33,10 @@ struct Goal {
     }
 }
 
+/** Parse a goal from a string. */
 Goal parseGoal(string goal) {
     import std.uni : isNumber;
-    import std.string : indexOf, strip;
+    import std.string : indexOf, strip, startsWith;
     import std.conv : to;
 
     if (goal.length == 0) {
@@ -56,7 +55,7 @@ Goal parseGoal(string goal) {
 
     enforce(goal.startsWith!isNumber(), "Missing goal value in " ~ goal);
 
-    auto goalTuple = parseValue(goal);
+    auto goalTuple = parseGoalValue(goal);
     GoalValue parsedGoal = goalTuple[0];
     ulong parsedLength = goalTuple[1];
 
@@ -114,17 +113,15 @@ unittest {
     assertThrown(parseGoal("12:30 books"));
 }
 
-private:
-
 /** Return the integral or time value in the goal string, and the number of
     characters read comprising the returned value.
 */
-Tuple!(GoalValue, ulong) parseValue(string goal) {
+Tuple!(GoalValue, ulong) parseGoalValue(string goal) {
+    import std.conv : to;
     import std.uni : isNumber;
 
     char[] val;
     val.reserve(goal.length);
-
     bool isTime = false;
 
     foreach (ch; goal) {
@@ -139,25 +136,26 @@ Tuple!(GoalValue, ulong) parseValue(string goal) {
     }
 
     if (isTime) {
-        // TODO: I want to allow flexible time parsing (esp allow AM/PM).
         return tuple(GoalValue(parseTime(val)), val.length);
     } else {
         return tuple(GoalValue(val.to!int), val.length);
     }
 }
 
-@("parseValue can parse a number as a number")
+@("parseGoalValue can parse a number as a number")
 unittest {
     auto s = GoalValue(23);
-    assert(parseValue("23") == tuple(GoalValue(23), 2));
-    assert(parseValue("23 somethings") == tuple(GoalValue(23), 2));
+    assert(parseGoalValue("23") == tuple(GoalValue(23), 2));
+    assert(parseGoalValue("23 somethings") == tuple(GoalValue(23), 2));
 }
 
-@("parseValue can parse a 24-hour time value")
+@("parseGoalValue can parse a 24-hour time value")
 unittest {
-    assert(parseValue("4:34") == tuple(GoalValue(TimeOfDay(4, 34, 00)), 4));
-    assert(parseValue("14:34") == tuple(GoalValue(TimeOfDay(14, 34, 00)), 5));
+    assert(parseGoalValue("4:34") == tuple(GoalValue(TimeOfDay(4, 34, 00)), 4));
+    assert(parseGoalValue("14:34") == tuple(GoalValue(TimeOfDay(14, 34, 00)), 5));
 }
+
+private:
 
 /** Parse a time string to a `TimeOfDay` object.
 
@@ -167,8 +165,10 @@ unittest {
 */
 // TODO: We can also throw parse errors on string to int conversion; document.
 TimeOfDay parseTime(const(char[]) time) {
+    // TODO: I want to allow flexible time parsing (esp allow AM/PM).
     // TODO: Throw DateTimeException for parse errors.
     import std.array : split;
+    import std.conv : to;
 
     auto parts = time.split(':');
     enforce(parts[0].length > 0 && parts[0].length < 3, "Invalid hour.");
