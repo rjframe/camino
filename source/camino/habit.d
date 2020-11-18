@@ -11,11 +11,17 @@ import sumtype;
 struct Habit {
     Schedule schedule;
     string description;
-    Goal goal; // TODO: type
+    Goal goal;
+
+    this(Schedule schedule, string description, Goal goal) {
+        this.schedule = schedule;
+        this.description = description;
+        this.goal = goal;
+    }
 
     this(string schedule, string description, string goal = "") {
-        // The shortest valid length is for shorthand days (like "Tu").
-        enforce(schedule.length >= 2, "Invalid schedule: " ~ schedule);
+        // The shortest valid length is for shorthand days (like "M").
+        enforce(schedule.length >= 1, "Invalid schedule: " ~ schedule);
         enforce(description.length > 0,
             "No habit description provided in: " ~ schedule
         );
