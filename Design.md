@@ -40,9 +40,10 @@ I probably need to explicitly record all goals the first time we run for a day;
 this way we can differentiate failure versus non-existent goals in reports.
 
 ```
+// The actual file will be a JSON list; this is easier to read:
 {
     "2020-01-01": {
-        // shorthand for "Eat lunch": { "complete": true }
+        // shorthand for "Eat lunch": { "actual": true }
         // if "goal" not specified, implicitly `true`.
         "Eat lunch": true,
         "Practice guitar": {
@@ -62,8 +63,9 @@ this way we can differentiate failure versus non-existent goals in reports.
         },
         "Get out of bed": {
             // If we were twice daily, etc. We'd have instances that contained
-            // the actuals for each instance.
-            "goal: "<6:31",
+            // the actuals for each instance. But can there be a twice daily
+            // time value that makes sense?
+            "goal": "<6:31",
             "actual": "5:00"
         },
         "Sleep in": {
@@ -77,12 +79,10 @@ this way we can differentiate failure versus non-existent goals in reports.
         "Practice guitar": {
             "instances": [true, "skip"],
         },
-        # Scheduled every other day, so implicitly a skip since was complete
-        # yesterday.
+        // Scheduled every other day, so implicitly a skip since was complete
+        // yesterday.
         "Litterbox": "skip"
-
     }
-
 }
 ```
 

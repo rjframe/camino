@@ -2,6 +2,7 @@
 
 Flexible command-line habit tracking.
 
+
 ## Table of Contents
 
 * [Introduction](#introduction)
@@ -102,9 +103,9 @@ weekly      Read a book         500 pages
 -daily      Sleep in
 ```
 
-Habit tracking will likely be in a JSON file, so you can easily edit it if
+Habit tracking will be in a JSON list file, so you can easily edit it if
 necessary and have options for tooling and reporting outside of camino (easy
-integration with inotify, etc.).
+integration with inotify, status bars, etc.).
 
 See [Design.md](Design.md) for the probable command-line interface.
 
@@ -129,9 +130,9 @@ Your name here?
 
 ## Contact
 
-- Email: <code@ryanjframe.com>
-- Website: <[www.ryanjframe.com](https://www.ryanjframe.com)>
-- diaspora*: <rjframe@diasp.org>
+- Email: code@ryanjframe.com
+- Website: [www.ryanjframe.com](https://www.ryanjframe.com)
+- diaspora*: rjframe@diasp.org
 
 
 ## Related Projects
