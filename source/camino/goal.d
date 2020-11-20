@@ -31,6 +31,83 @@ struct Goal {
     static typeof(this) deserialize(Asdf data) {
         return parseGoal(data.get(""));
     }
+
+    void serialize(S)(ref S serializer)
+        //if (is(S == JsonSerializer) || is(S == AsdfSerializer))
+        // TODO: What should these be?
+    {
+        import std.conv : text;
+
+        auto objState = serializer.objectBegin();
+        serializer.putKey("goal");
+
+        auto goalValue = goal.match!(
+            (TimeOfDay t) => t.toISOExtString(),
+            (bool b) => b.text,
+            (int i) => i.text
+        );
+
+        string goalString =
+            ordering == Ordering.LessThan ? "<"
+            : ordering == Ordering.GreaterThan ? ">"
+            : "";
+
+        goalString ~= goalValue;
+
+        import std.string : isNumeric;
+        if (goalString.isNumeric()) {
+            // We basically converted from int to string now back to int, but
+            // the code is more straightforward than anything I can think of
+            // without the conversions.
+            serializer.putNumberValue(goalString);
+        } else if (goalString == "true") {
+            serializer.putValue(true);
+        } else if (goalString == "false") {
+            serializer.putValue(false);
+        } else {
+            serializer.putValue(goalString);
+        }
+
+        serializer.objectEnd(objState);
+    }
+}
+
+@("Serialize a goal to JSON")
+unittest {
+    assert(
+        serializeToJson(Goal(Ordering.Equal, GoalValue(5), "stuff"))
+        == `{"goal":5}`,
+        serializeToJson(Goal(Ordering.Equal, GoalValue(5), "stuff"))
+    );
+    assert(
+        serializeToJson(Goal(Ordering.LessThan, GoalValue(5), "stuff"))
+        == `{"goal":"<5"}`,
+        serializeToJson(Goal(Ordering.LessThan, GoalValue(5), "stuff"))
+    );
+    assert(
+        serializeToJson(Goal(
+            Ordering.Equal, GoalValue(TimeOfDay(1, 2, 30)), "stuff"))
+        == `{"goal":"01:02:30"}`,
+        serializeToJson(Goal(
+            Ordering.Equal, GoalValue(TimeOfDay(1, 2, 30)), "stuff"))
+    );
+    assert(
+        serializeToJson(Goal(
+            Ordering.GreaterThan, GoalValue(TimeOfDay(1, 2, 30)), "stuff"))
+        == `{"goal":">01:02:30"}`,
+        serializeToJson(Goal(
+            Ordering.GreaterThan, GoalValue(TimeOfDay(1, 2, 30)), "stuff"))
+    );
+    assert(
+        serializeToJson(Goal(Ordering.Equal, GoalValue(true), "stuff"))
+        == `{"goal":true}`,
+        serializeToJson(Goal(Ordering.Equal, GoalValue(true), "stuff"))
+    );
+    assert(
+        serializeToJson(Goal(Ordering.Equal, GoalValue(false), "stuff"))
+        == `{"goal":false}`,
+        serializeToJson(Goal(Ordering.Equal, GoalValue(false), "stuff"))
+    );
 }
 
 /** Parse a goal from a string. */
