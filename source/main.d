@@ -1,7 +1,8 @@
-import camino.habit;
-
 import std.algorithm : splitter;
 import std.datetime.date : Date;
+
+import camino.habit;
+import camino.history;
 
 /** A `Command` describes the command input from the command-line arguments. */
 struct Command {
@@ -26,6 +27,10 @@ enum ReturnCode : int {
 int main(string[] args) {
     // TODO: Turn all exceptions that reach us into nicer error messages.
     readHabits("habits.txt");
+
+
+    import std.stdio : File;
+    update(File("history.jsonl"), Date(2020, 1, 1));
 
     return 0;
 }
