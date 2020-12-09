@@ -1,3 +1,4 @@
+/** Read and write to the Camino history file. */
 module camino.history;
 
 import std.datetime.date : Date, TimeOfDay;
@@ -6,6 +7,7 @@ import std.json : JSONValue;
 import std.stdio : File;
 import std.typecons : Tuple;
 
+import camino.exception;
 import camino.goal;
 import camino.habit;
 
@@ -44,13 +46,39 @@ void update(FILE = File)(FILE history, Date date, Habit habit, Update update) {
 
 }
 
-JSONValue readRecord(FILE = File)(FILE history, Date date) {
+/** Read the record for the specified date from the given history file.
+
+    The passed file object must conform to the [std.stdio.File] API and be
+    opened for reading by the caller.
+
+    The file must be a JSONL (JSON list) file.
+
+    Examples:
+
+    ---
+    import std.datetime : Date;
+    import std.stdio : File;
+
+    auto record = readRecord(File("myfile.jsonl"), Date(2020, 1, 1));
+    ---
+
+    Throws:
+
+    [ParseJSON] if the record is not a valid JSON object.
+
+    [InvalidRecord] if there is no record for the given date in the file.
+*/
+JSONValue readRecord(FILE = File)(FILE history, in Date date) {
     import std.json : parseJSON;
     import std.range : stride;
 
     foreach (line; history.byLine()) {
+        scope(failure) {
+            import std.conv : text;
+            throw new ParseJSON("Record is not a JSON object.", line.text);
+        }
+
         auto tokens = readTokenStream(line);
-        // TODO: Custom parse error exception
         enforce(tokens.length == 3);
 
         enforce(
@@ -59,6 +87,8 @@ JSONValue readRecord(FILE = File)(FILE history, Date date) {
             )
         );
 
+        // This check is technically not necessary, since this is when
+        // readTokenStream returns.
         enforce(
             tokens[2].tryMatch!(
                 (Symbol s) => s == Symbol.Colon
@@ -69,10 +99,10 @@ JSONValue readRecord(FILE = File)(FILE history, Date date) {
             (string s) => s
         );
 
-        if (rec_date == date.toISOExtString) return parseJSON(line);
+        if (rec_date == date.toISOExtString()) return parseJSON(line);
     }
 
-    throw new Exception("No record found for specified date.");
+    throw new InvalidRecord("No record found for specified date.");
 }
 
 @("Read a record as JSON")
@@ -99,13 +129,14 @@ unittest {
     import std.exception : assertThrown;
     import camino.test_util : FakeFile;
 
-    auto noDate = `{"Eat Lunch": true}`;
     auto brokenDictionary = `{"2020-01-01": { "Get out of bed": }}`;
     auto notAnObject = `"2020-01-01"`;
 
-    assertThrown(readRecord(FakeFile(noDate), Date(2020-01-01)));
-    assertThrown(readRecord(FakeFile(brokenDictionary), Date(2020-01-01)));
-    assertThrown(readRecord(FakeFile(notAnObject), Date(2020-01-01)));
+    // TODO: This first is failing with InvalidRecord.
+    assertThrown!ParseJSON(
+        readRecord(FakeFile(brokenDictionary), Date(2020, 01, 01)));
+    assertThrown!ParseJSON(
+        readRecord(FakeFile(notAnObject), Date(2020, 01, 01)));
 }
 
 @("readRecord throws an exception if the desired record is not found")
@@ -113,18 +144,41 @@ unittest {
     import std.exception : assertThrown;
     import camino.test_util : FakeFile;
 
-    auto text = `{"2020-01-01": { "Get out of bed": false }}`;
+    auto noDate = `{"Eat Lunch": true}`;
+    auto otherDate = `{"2020-01-01": { "Get out of bed": false }}`;
 
-    assertThrown(readRecord(FakeFile(text), Date(2020-01-02)));
+    assertThrown!InvalidRecord(
+        readRecord(FakeFile(noDate), Date(2020, 01, 01)));
+    assertThrown!InvalidRecord(
+        readRecord(FakeFile(otherDate), Date(2020, 01, 02)));
 }
 
 private:
 
-enum Symbol { Brace, Colon, Invalid};
+enum Symbol { Brace, Colon };
 
 alias Token = SumType!(Symbol, string);
 
-Token[] readTokenStream(const(char[]) line) {
+/** Read and return a stream of tokens from a partial JSON line.
+
+    Validation of the JSON must be performed by the caller. We only read until
+    we find a colon, assuming that what precedes it is the beginning of a JSON
+    object; we then return the tokens we have read.
+
+    Notes:
+
+    This function exists for efficiency; we can obtain the key of our JSON
+    object without parsing the full object, allowing us to only parse the object
+    in the JSONL that we care about.
+
+    Throws:
+
+    Throws [ParseJSON] if we are recognized to be an invalid object. Note
+    that we only parse enough of the text to ensure it is a JSON object with a
+    string-typed key.
+*/
+@safe pure
+Token[] readTokenStream(in const(char[]) line) {
     Token[] tokens;
     size_t idx = 0;
 
@@ -142,30 +196,46 @@ Token[] readTokenStream(const(char[]) line) {
     return tokens;
 }
 
-/** Read the next token from the JSON stream.
+/** Read the next token from the provided text.
 
     We only recognize a small subset of valid token, since we only need to read
-    the beginning of an object.
+    the beginning of an object to ensure we're a JSON object with a string key.
+
+    Notes:
+
+    Only [readTokenStream] should call this function. That is likely the
+    function you're looking for.
+
+    Throws:
+
+    Throws [ParseJSON] if we are recognized to be an invalid object. Note
+    that we only parse enough of the text to ensure it is a JSON object with a
+    string-typed key.
 */
-Tuple!(size_t, Token) readToken(const(char[]) line)
+@safe pure
+Tuple!(size_t, Token) readToken(in const(char[]) line)
     in(line.length > 0)
 {
+    import std.conv : text;
     import std.typecons : tuple;
     import std.uni : isWhite;
 
     size_t len = 0;
+    // FIXME: I know the length of a valid record here. Make this a static
+    // array; we can return when full even if we haven't reached a colon
+    // (invalid record).
     char[] token;
     bool inString = false;
 
-    // TODO: Custom exception type for parse errors.
+    // TODO: Custom exception type(s) for parse errors.
 
     // Our parsing here does not allow for { or : in strings; any such string
     // would be invalid and readRecord() will check that so we don't need to
     // care here.
     foreach (ch; line) {
         if (ch.isWhite()) {
-            // We are reading from a JSONL file.
-            enforce(ch != '\n', "Unexpected newline in JSON line.");
+            // Should never be possible since we're reading by line.
+            if (ch == '\n') assert(0, "newline cannot happen");
             ++len;
         } else if (ch == '{') {
             return tuple(len + 1, Token(Symbol.Brace));
@@ -173,7 +243,7 @@ Tuple!(size_t, Token) readToken(const(char[]) line)
             return tuple(len + 1, Token(Symbol.Colon));
         } else if (ch == '"') {
             if (inString) {
-                return tuple(len, Token(cast(string) token));
+                return tuple(len, Token(token.dup));
             } else {
                 ++len;
                 inString = true;
@@ -183,15 +253,15 @@ Tuple!(size_t, Token) readToken(const(char[]) line)
                 token ~= ch;
                 ++len;
             } else {
-                throw new Exception("Unexpected token in JSON object: " ~ ch);
+                throw new ParseJSON(
+                    "Unexpected token in JSON object: " ~ ch,
+                    line.text
+                );
             }
         }
     }
 
-    // Invalid records (i.e., not a JSON object) may reach here; we do the
-    // validation in readRecord() so we just return the incomplete token stream
-    // here as Symbol.Invalid.
-    return tuple(len, Token(Symbol.Invalid));
+    throw new ParseJSON("Invalid record: not a JSON object.", line.text);
 }
 
 @("readToken parses early JSON object tokens")
@@ -206,22 +276,12 @@ unittest {
     assert(readToken(`"asdf"`)[1] == Token("asdf"));
 }
 
-@("readToken throws on newline")
-unittest {
-    import std.exception : assertThrown;
-
-    assertThrown(readToken("\n"));
-    assertThrown(readToken(" \n\"asdf\""));
-    assertThrown(readToken("\"jk\nl;\""));
-    assertThrown(readToken("\n\"key\""));
-}
-
 @("readToken throws on non-object creation tokens")
 unittest {
     import std.exception : assertThrown;
 
-    assertThrown(readToken("asdf"));
-    assertThrown(readToken("[1]"));
-    assertThrown(readToken("1"));
-    assertThrown(readToken("}"));
+    assertThrown!ParseJSON(readToken("asdf"));
+    assertThrown!ParseJSON(readToken("[1]"));
+    assertThrown!ParseJSON(readToken("1"));
+    assertThrown!ParseJSON(readToken("}"));
 }
