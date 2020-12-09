@@ -12,8 +12,13 @@ import camino.habit;
 import sumtype;
 
 
+enum Task { Complete, Incomplete };
+
+alias Update = SumType!(Task, Goal);
+
+
 /** Update the specified `Habit` for the given date according to `Update`. */
-void update(FILE = File)(FILE history, Date date) { // , Habit habit, Update update) {
+void update(FILE = File)(FILE history, Date date, Habit habit, Update update) {
     import std.stdio : writeln; // tmp
 
     auto record = readRecord(history, date);
@@ -27,14 +32,25 @@ void update(FILE = File)(FILE history, Date date) { // , Habit habit, Update upd
      */
 
     writeln("\nCurrent: ", record);
+    //writeln("\nInner: ", record[date.toISOExtString()]);
+
+    auto newRecord = update.match!(
+        (Task t) => JSONValue(t == Task.Complete),
+        (Goal g) => g.toJSONValue()
+    );
+
+    //record[date.toISOExtString()][habit.description] = newRecord;
+
 
 }
 
 JSONValue readRecord(FILE = File)(FILE history, Date date) {
-    import std.stdio;
+    import std.json : parseJSON;
     import std.range : stride;
+
     foreach (line; history.byLine()) {
         auto tokens = readTokenStream(line);
+        // TODO: Custom parse error exception
         enforce(tokens.length == 3);
 
         enforce(
@@ -53,16 +69,58 @@ JSONValue readRecord(FILE = File)(FILE history, Date date) {
             (string s) => s
         );
 
-        if (rec_date == date.toISOExtString) return JSONValue(line);
+        if (rec_date == date.toISOExtString) return parseJSON(line);
     }
 
     throw new Exception("No record found for specified date.");
 }
 
+@("Read a record as JSON")
+unittest {
+    import std.datetime.date : Date;
+    import std.json : parseJSON;
+    import camino.test_util : FakeFile;
+
+    auto text =
+`{"2020-01-01": { "Eat lunch": false, "Read": { "goal": 500, "instances": [100, 350, 50, 1] }, "Get out of bed": { "goal" : "<6:31", "actual": "5:00" }}}
+{"2020-01-02": { "Eat lunch": "skip", "Read": { "goal": 500, "instances": [100, 350, 50, 1] }, "Get out of bed": { "goal" : "<6:31", "actual": "5:00" }, "Litterbox": true }}
+{"2020-01-03": { "Eat lunch": false, "Read": { "goal": 500, "instances": [100, 350, 50, 1] }, "Get out of bed": { "goal" : "<6:31", "actual": "5:00" }}}`;
+
+    assert(readRecord(FakeFile(text), Date(2020, 1, 1)) ==
+        parseJSON(`{"2020-01-01": { "Eat lunch": false, "Read":
+            { "goal": 500, "instances": [100, 350, 50, 1] },
+            "Get out of bed": { "goal" : "<6:31", "actual": "5:00" }}}`
+        )
+    );
+}
+
+@("readRecord throws an exception on an invalid JSON object")
+unittest {
+    import std.exception : assertThrown;
+    import camino.test_util : FakeFile;
+
+    auto noDate = `{"Eat Lunch": true}`;
+    auto brokenDictionary = `{"2020-01-01": { "Get out of bed": }}`;
+    auto notAnObject = `"2020-01-01"`;
+
+    assertThrown(readRecord(FakeFile(noDate), Date(2020-01-01)));
+    assertThrown(readRecord(FakeFile(brokenDictionary), Date(2020-01-01)));
+    assertThrown(readRecord(FakeFile(notAnObject), Date(2020-01-01)));
+}
+
+@("readRecord throws an exception if the desired record is not found")
+unittest {
+    import std.exception : assertThrown;
+    import camino.test_util : FakeFile;
+
+    auto text = `{"2020-01-01": { "Get out of bed": false }}`;
+
+    assertThrown(readRecord(FakeFile(text), Date(2020-01-02)));
+}
 
 private:
 
-enum Symbol { Brace, Colon };
+enum Symbol { Brace, Colon, Invalid};
 
 alias Token = SumType!(Symbol, string);
 
@@ -89,7 +147,9 @@ Token[] readTokenStream(const(char[]) line) {
     We only recognize a small subset of valid token, since we only need to read
     the beginning of an object.
 */
-Tuple!(size_t, Token) readToken(const(char[]) line) {
+Tuple!(size_t, Token) readToken(const(char[]) line)
+    in(line.length > 0)
+{
     import std.typecons : tuple;
     import std.uni : isWhite;
 
@@ -97,6 +157,11 @@ Tuple!(size_t, Token) readToken(const(char[]) line) {
     char[] token;
     bool inString = false;
 
+    // TODO: Custom exception type for parse errors.
+
+    // Our parsing here does not allow for { or : in strings; any such string
+    // would be invalid and readRecord() will check that so we don't need to
+    // care here.
     foreach (ch; line) {
         if (ch.isWhite()) {
             // We are reading from a JSONL file.
@@ -123,7 +188,10 @@ Tuple!(size_t, Token) readToken(const(char[]) line) {
         }
     }
 
-    assert(0, "Should have returned before reaching end of function.");
+    // Invalid records (i.e., not a JSON object) may reach here; we do the
+    // validation in readRecord() so we just return the incomplete token stream
+    // here as Symbol.Invalid.
+    return tuple(len, Token(Symbol.Invalid));
 }
 
 @("readToken parses early JSON object tokens")
