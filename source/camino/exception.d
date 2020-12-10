@@ -1,9 +1,9 @@
 /** Camino custom exceptions.
 
-    Note: I do not postfix the names with "Exception"; since I only catch and
+    Note: Names are not postfixed with "Exception"; since we only catch and
     throw exceptions, that's redundant. I like the way it reads with the shorter
-    names, and it easily differentiates my exceptions from third-party
-    exceptions.
+    names, especially when using the try/catch syntax; and it easily
+    differentiates my exceptions from third-party exceptions.
 */
 module camino.exception;
 
@@ -39,17 +39,56 @@ class ParseJSON : Exception {
     private string parsedLine;
 }
 
+/** Thrown upon failure to parse a Goal value. */
+class InvalidGoal : Exception {
+    /** Create a new [InvalidGoal] exception. */
+    @nogc nothrow pure @safe
+    this(string msg) {
+        super(msg);
+    }
+
+    /** Create a new [InvalidGoal] exception. */
+    @nogc nothrow pure @safe
+    this(
+        string msg,
+        string goalString,
+        string file = __FILE__,
+        ulong line = cast(ulong)__LINE__,
+        Throwable inner = null
+    ) {
+        super(msg, file, line, inner);
+        this.goalString = goalString;
+    }
+
+    /** Output the exception's message to the provided sink. */
+    override void toString (scope void delegate(scope const char[]) sink) const
+    {
+        sink(this.msg);
+        if (goalString) {
+            sink("\n\tWhile parsing goal: \"");
+            sink(this.goalString);
+            sink(`"`);
+        }
+    }
+
+    private:
+
+    string goalString;
+}
+
 /** Thrown when parsing or working with an object that is valid JSON but not a
     valid Camino record.
 */
 class InvalidRecord : Exception {
     import std.json : JSONValue;
 
+    /** Create a new [InvalidRecord] exception. */
     @nogc nothrow pure @safe
     this(string msg) {
         super(msg);
     }
 
+    /** Create a new [InvalidRecord] exception. */
     @nogc nothrow pure @safe
     this(
         string msg,
@@ -62,6 +101,7 @@ class InvalidRecord : Exception {
         this.record = record;
     }
 
+    /** Output the exception's message to the provided sink. */
     override void toString (scope void delegate(scope const char[]) sink) const
     {
         sink(this.msg);

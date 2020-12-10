@@ -7,7 +7,6 @@
     ],
     "copyright": "Copyright © 2020 Ryan Frame",
     "dependencies": {
-        "asdf": "~>0.6.7",
         "sumtype": "~>0.10.2"
     },
     "configurations": [
