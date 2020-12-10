@@ -37,7 +37,7 @@ We provide a simple and consistent interface to manage:
 * negative/undesired habits ("Don't sleep in")
 
 The above habit types can typically be combined -- "two exercises three times a
-day."
+day." If something makes sense for your needs, we need to support it.
 
 See [Usage](#usage) below or [Design.md](Design.md) for the
 planned interface.
@@ -45,10 +45,14 @@ planned interface.
 
 ### Why?
 
-I use pencil and paper for scheduling. I've begun experimenting with electronic
-scheduling systems but haven't found anything flexible enough to manage my habit
-tracking. I think that it can be done with the design I've come up with, so am
-giving it a try.
+I use pencil and paper for scheduling. The major problem with paper for habit
+tracking is the difficulty in generating reports; if I want to see how well I've
+done overall (or for a specific habit) in the course of a year, or compare month
+to month, I have to do the work of generating that report, every time.
+
+I looked for other solutions but couldn't find anything flexible enough to
+manage the variety of habit types I want to track, so sat down one day to work
+out a design.
 
 
 ### License
@@ -62,9 +66,9 @@ for details.
 ### Build
 
 To build camino, you'll need the D compiler and dub. On Linux you can likely use
-your package manager; install dub and one of dmd (reference compiler), gdc
-(GCC-backed) or ldc (LLVM-backed) compilers. Otherwise you can obtain them from
-[the D website](https://dlang.org/download.html).
+your package manager; install dub and one of the dmd (reference compiler), gdc
+(GCC-backend) or ldc (LLVM-backend) compilers. Otherwise you can obtain them
+from [the D website](https://dlang.org/download.html).
 
 You can run unit tests by running `dub test` and build the application via
 `dub build -b release`.
@@ -99,20 +103,20 @@ weekly      Read a book         500 pages
 # Three exercises, three times a day.
 3 daily     Spanish             3 exercises
 
-# The '-' makes it an undesireable habit. It only matters for reporting.
+# The '-' makes it an undesireable habit. This only matters for reporting.
 -daily      Sleep in
 ```
 
 Habit tracking will be in a JSON list file, so you can easily edit it if
-necessary and have options for tooling and reporting outside of camino (easy
-integration with inotify, status bars, etc.).
+necessary and have options for tooling, integrations, and reporting outside of
+camino.
 
 See [Design.md](Design.md) for the probable command-line interface.
 
 
 ### Known Issues
 
-It doesn't work yet!
+It isn't ready yet!
 
 
 ## Contributing
