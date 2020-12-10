@@ -4,5 +4,6 @@ mixin runTestsMain!(
     "camino.goal",
     "camino.habit",
     "camino.history",
-    "camino.schedule"
+    "camino.schedule",
+    "camino.test_util"
 );
