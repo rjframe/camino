@@ -64,7 +64,7 @@ void update(FILE = File)(FILE history, Date date, Habit habit, Update update) {
 
     Throws:
 
-    [ParseJSON] if the record is not a valid JSON object.
+    [InvalidJSON] if the record is not a valid JSON object.
 
     [InvalidRecord] if there is no record for the given date in the file.
 */
@@ -75,7 +75,7 @@ JSONValue readRecord(FILE = File)(FILE history, in Date date) {
     foreach (line; history.byLine()) {
         scope(failure) {
             import std.conv : text;
-            throw new ParseJSON("Record is not a JSON object.", line.text);
+            throw new InvalidJSON("Record is not a JSON object.", line.text);
         }
 
         auto tokens = readTokenStream(line);
@@ -133,9 +133,9 @@ unittest {
     auto notAnObject = `"2020-01-01"`;
 
     // TODO: This first is failing with InvalidRecord.
-    assertThrown!ParseJSON(
+    assertThrown!InvalidJSON(
         readRecord(FakeFile(brokenDictionary), Date(2020, 01, 01)));
-    assertThrown!ParseJSON(
+    assertThrown!InvalidJSON(
         readRecord(FakeFile(notAnObject), Date(2020, 01, 01)));
 }
 
@@ -173,7 +173,7 @@ alias Token = SumType!(Symbol, string);
 
     Throws:
 
-    Throws [ParseJSON] if we are recognized to be an invalid object. Note
+    Throws [InvalidJSON] if we are recognized to be an invalid object. Note
     that we only parse enough of the text to ensure it is a JSON object with a
     string-typed key.
 */
@@ -208,7 +208,7 @@ Token[] readTokenStream(in const(char[]) line) {
 
     Throws:
 
-    Throws [ParseJSON] if we are recognized to be an invalid object. Note
+    Throws [InvalidJSON] if we are recognized to be an invalid object. Note
     that we only parse enough of the text to ensure it is a JSON object with a
     string-typed key.
 */
@@ -253,7 +253,7 @@ Tuple!(size_t, Token) readToken(in const(char[]) line)
                 token ~= ch;
                 ++len;
             } else {
-                throw new ParseJSON(
+                throw new InvalidJSON(
                     "Unexpected token in JSON object: " ~ ch,
                     line.text
                 );
@@ -261,7 +261,7 @@ Tuple!(size_t, Token) readToken(in const(char[]) line)
         }
     }
 
-    throw new ParseJSON("Invalid record: not a JSON object.", line.text);
+    throw new InvalidJSON("Invalid record: not a JSON object.", line.text);
 }
 
 @("readToken parses early JSON object tokens")
@@ -280,8 +280,8 @@ unittest {
 unittest {
     import std.exception : assertThrown;
 
-    assertThrown!ParseJSON(readToken("asdf"));
-    assertThrown!ParseJSON(readToken("[1]"));
-    assertThrown!ParseJSON(readToken("1"));
-    assertThrown!ParseJSON(readToken("}"));
+    assertThrown!InvalidJSON(readToken("asdf"));
+    assertThrown!InvalidJSON(readToken("[1]"));
+    assertThrown!InvalidJSON(readToken("1"));
+    assertThrown!InvalidJSON(readToken("}"));
 }

@@ -8,12 +8,14 @@
 module camino.exception;
 
 /** Thrown upon failure to parse a JSON object. */
-class ParseJSON : Exception {
+class InvalidJSON : Exception {
+    /** Create a new [InvalidJSON] exception. */
     @nogc nothrow pure @safe
     this(string msg) {
         super(msg);
     }
 
+    /** Create a new [InvalidJSON] exception. */
     @nogc nothrow pure @safe
     this(
         string msg,
@@ -26,6 +28,7 @@ class ParseJSON : Exception {
         this.parsedLine = parsedLine;
     }
 
+    /** Output the exception's message to the provided sink. */
     override void toString (scope void delegate(scope const char[]) sink) const
     {
         sink(this.msg);
