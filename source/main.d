@@ -26,11 +26,12 @@ enum ReturnCode : int {
 
 int main(string[] args) {
     // TODO: Turn all exceptions that reach us into nicer error messages.
-    readHabits("habits.txt");
+    auto habits = readHabits("habits.txt");
 
 
     import std.stdio : File;
-    update(File("history.jsonl"), Date(2020, 1, 1));
+    update(File("history.jsonl"), Date(2020, 1, 1), habits[0],
+            Update(Task.Complete));
 
     return 0;
 }
