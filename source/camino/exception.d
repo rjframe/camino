@@ -7,6 +7,7 @@
 */
 module camino.exception;
 
+
 /** Thrown upon failure to parse a JSON object. */
 class InvalidJSON : Exception {
     /** Create a new [InvalidJSON] exception. */
@@ -32,7 +33,7 @@ class InvalidJSON : Exception {
     override void toString (scope void delegate(scope const char[]) sink) const
     {
         sink(this.msg);
-        if (parsedLine) {
+        if (parsedLine.length > 0) {
             sink("\n\tWhile parsing line: \"");
             sink(this.parsedLine);
             sink(`"`);
@@ -67,7 +68,7 @@ class InvalidGoal : Exception {
     override void toString (scope void delegate(scope const char[]) sink) const
     {
         sink(this.msg);
-        if (goalString) {
+        if (goalString.length > 0) {
             sink("\n\tWhile parsing goal: \"");
             sink(this.goalString);
             sink(`"`);
