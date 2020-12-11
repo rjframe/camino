@@ -1,3 +1,4 @@
+/** Schedule parsing and management for [camino.habit.Habit|Habit]s. */
 module camino.schedule;
 
 import std.algorithm : startsWith;
@@ -8,6 +9,15 @@ version(unittest) import std.exception : assertThrown;
 
 import sumtype;
 
+import camino.exception : InvalidSchedule;
+
+
+@safe:
+
+/** Set the repetition period for a goal.
+
+    At least for now, only daily habits can be negative (undesired).
+*/
 enum Repeat {
     Daily,
     DailyNegative,
@@ -15,48 +25,78 @@ enum Repeat {
     Monthly,
 }
 
-/** Describes the repeat method of a `SpecialRepeat` object. */
+/** Describes the repeat method of a `SpecialRepeat` object.
+
+    ## See also
+
+    The [SpecialRepeat] struct.
+*/
 alias RepeatInterval = SumType!(Repeat, DayOfWeek);
 
+/** Store the schedule data for special schedules.
+
+    Special repetitions are not simple (daily, every Tuesday, etc.) but may
+    repeat multiple times a period (three times daily) or cover a span of time
+    period (every three weeks, etc.).
+*/
 struct SpecialRepeat {
     RepeatInterval interval;
     /** Specifies every three days, every other week, etc. */
     int numberOfIntervals;
     // TODO: This is set in the goals field; should it be in this struct?
     int numberPerInstance;
-    // TODO doc+assert: An interval of type Repeat will have a DailyNegative;
-    // I'll always use this instead.
+    // TODO assert: SpecialRepeat always uses this instead of
+    // Repeat.DailyNegative.
+    /** Sets whether this is an undesireable habit. A [SpecialRepeat] will
+        always use this instead of the [Repeat].DailyNegative enum value.
+    */
     bool negative;
 }
 
 alias Schedule = SumType!(Repeat, SpecialRepeat);
 
-Schedule parseSchedule(string schedule) {
+/** Parse a goal's schedule from the provided string.
+
+    Throws:
+
+    [InvalidSchedule] if unable to parse the schedule string.
+*/
+pure
+const(Schedule) parseSchedule(string schedule)
+    in(schedule.length > 0)
+{
     import std.uni : isNumber;
-    import std.string : indexOf;
     import std.conv : to;
 
     if (startsWith!isNumber(schedule)) {
+        import std.string : indexOf;
+
         auto splitIdx = schedule.indexOf(' ');
-        enforce(
-            splitIdx > 0 && splitIdx != schedule.length,
-            "A number in the schedule must be followed by a unit."
-        );
 
-        // TODO: Catch and rethrow parse error or let it pass?
-        auto number = schedule[0..splitIdx].to!int;
+        if (splitIdx == -1) {
+            throw new InvalidSchedule(
+                "A number in the schedule must be followed by a unit.",
+                schedule
+            );
+        }
 
-        auto repeatType = schedule[splitIdx+1 .. $];
+        int number;
+        string repeatType;
+        try {
+            number = schedule[0..splitIdx].to!int;
+            repeatType = schedule[splitIdx+1 .. $];
+        } catch (Exception e) {
+            throw new InvalidSchedule(
+                "Failed to parse repetition string.",
+                schedule
+            );
+        }
 
         if (repeatType.isRepeatInterval()) {
             return Schedule(SpecialRepeat(
                 RepeatInterval(repeatType.toRepeat()), number, 1, false
             ));
         } else {
-            enforce(isDayOfWeek(repeatType),
-                "Invalid schedule unit: " ~ repeatType
-            );
-
             return Schedule(SpecialRepeat(
                 RepeatInterval(repeatType.toDayOfWeek()),
                 number,
@@ -73,10 +113,6 @@ Schedule parseSchedule(string schedule) {
         if (sched == "daily") {
             return Schedule(Repeat.DailyNegative);
         } else {
-            enforce(sched.isDayOfWeek(),
-                "Invalid schedule unit: " ~ sched
-            );
-
             return Schedule(SpecialRepeat(
                 RepeatInterval(sched.toDayOfWeek()),
                 1,
@@ -84,14 +120,10 @@ Schedule parseSchedule(string schedule) {
                 true
             ));
         }
-    } else {
+    } else { // Does not start with a number or '-'.
         if (schedule.isRepeatInterval()) {
             return Schedule(schedule.toRepeat());
         } else {
-            enforce(schedule.isDayOfWeek(),
-                "Invalid schedule unit: " ~ schedule
-            );
-
             return Schedule(SpecialRepeat(
                 RepeatInterval(schedule.toDayOfWeek()),
                 1,
@@ -143,68 +175,69 @@ unittest {
 
 private:
 
-/** Return true if the provided string matches a day of the week; otherwise,
-    false.
+/** Convert the provided string to a [DayOfWeek] enumerated value.
 
-    Any unique abbreviation is acceptable; "Mon", "Mond", "M" all match Monday.
-    However, "S" will return false.
+    Any unique day abbreviations are allowed; for example, "Sun" will match
+    Sunday, but "S" will be an error because it could match Sunday or Monday.
+
+    Matches are case-insensitive.
+
+    Throws:
+
+    [InvalidSchedule] if the day string is invalid.
 */
-bool isDayOfWeek(string day) {
-    // TODO: Should this be an assert/enforce here? It will error later on
-    // toDayOfWeek().
-    // TODO: Allow lowercase
-    if (day.length == 0) return false;
-    return "Monday".startsWith(day)
-        || ("Tuesday".startsWith(day) && day.length > 1)
-        || "Wednesday".startsWith(day)
-        || ("Thursday".startsWith(day) && day.length > 1)
-        || "Friday".startsWith(day)
-        || ("Saturday".startsWith(day) && day.length > 1)
-        || ("Sunday".startsWith(day) && day.length > 1);
-}
-
-// Separating this from isDayOfWeek means we parse day strings twice for every
-// day-specific habit; we're not likely to ever have enough habits for that to
-// be noticeable and we get cleaner code.
-// TODO: Use an optional type?
+// TODO: Return an optional type instead of throw?
+pure
 DayOfWeek toDayOfWeek(string day) {
-    enforce(day.length > 0, "No day provided.");
+    import std.string : toLower;
 
-    // TODO: Allow lowercase
-    if ("Monday".startsWith(day)) {
+    if (day.length == 0) throw new InvalidSchedule("No day provided.");
+
+    auto day_ = day.toLower();
+
+    if ("monday".startsWith(day_)) {
         return DayOfWeek.mon;
-    } else if ("Tuesday".startsWith(day)) {
+    } else if ("tuesday".startsWith(day_)) {
         return DayOfWeek.tue;
-    } else if ("Wednesday".startsWith(day)) {
+    } else if ("wednesday".startsWith(day_)) {
         return DayOfWeek.wed;
-    } else if ("Thursday".startsWith(day)) {
+    } else if ("thursday".startsWith(day_)) {
         return DayOfWeek.thu;
-    } else if ("Friday".startsWith(day)) {
+    } else if ("friday".startsWith(day_)) {
         return DayOfWeek.fri;
-    } else if ("Saturday".startsWith(day)) {
+    } else if ("saturday".startsWith(day_)) {
         return DayOfWeek.sat;
-    } else if ("Sunday".startsWith(day)) {
+    } else if ("sunday".startsWith(day_)) {
         return DayOfWeek.sun;
     } else {
-        throw new Exception("Unrecognized day: " ~ day);
+        throw new InvalidSchedule("Unrecognized day.", day);
     }
 }
 
-// TODO: See the comments for toDayOfWeek() -> same problems.
-bool isRepeatInterval(string interval) {
-    return (interval == "days" || interval == "daily"
+/** Returns true if the provided string matches a repeat interval; otherwise,
+    returns false.
+*/
+pure @nogc nothrow
+bool isRepeatInterval(in string interval) {
+    return interval == "days" || interval == "daily"
         || interval == "weeks" || interval == "weekly"
-        || interval == "months" || interval == "monthly");
+        || interval == "months" || interval == "monthly";
 }
 
+/** Convert a string to a [Repeat] enumeration. */
+pure
 Repeat toRepeat(string interval) {
-    if (interval == "days" || interval == "daily") {
-        return Repeat.Daily;
-    } else if (interval == "weeks" || interval == "weekly") {
-        return Repeat.Weekly;
-    } else if (interval == "months" || interval == "monthly") {
-        return Repeat.Monthly;
-    } else {
-        throw new Exception("Invalid repeat interval: " ~ interval);
+    switch (interval) {
+        case "days":
+        case "daily":
+            return Repeat.Daily;
+        case "weeks":
+        case "weekly":
+            return Repeat.Weekly;
+        case "months":
+        case "monthly":
+            return Repeat.Monthly;
+        default:
+            throw new InvalidSchedule("Invalid repeat interval.", interval);
     }
 }
