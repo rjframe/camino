@@ -80,6 +80,43 @@ class InvalidGoal : Exception {
     string goalString;
 }
 
+/** Thrown upon failure to parse a Schedule from the habits file. */
+class InvalidSchedule : Exception {
+    /** Create a new [InvalidSchedule] exception. */
+    @nogc nothrow pure @safe
+    this(string msg) {
+        super(msg);
+    }
+
+    /** Create a new [InvalidSchedule] exception. */
+    @nogc nothrow pure @safe
+    this(
+        string msg,
+        string scheduleString,
+        string file = __FILE__,
+        ulong line = cast(ulong)__LINE__,
+        Throwable inner = null
+    ) {
+        super(msg, file, line, inner);
+        this.scheduleString = scheduleString;
+    }
+
+    /** Output the exception's message to the provided sink. */
+    override void toString (scope void delegate(scope const char[]) sink) const
+    {
+        sink(this.msg);
+        if (scheduleString.length > 0) {
+            sink("\n\tWhile parsing goal: \"");
+            sink(this.scheduleString);
+            sink(`"`);
+        }
+    }
+
+    private:
+
+    string scheduleString;
+}
+
 /** Thrown when parsing or working with an object that is valid JSON but not a
     valid Camino record.
 */
