@@ -16,10 +16,10 @@ import sumtype;
 
     For example, "fewer than 3 instances", "100 steps", "more than 50 pages".
 */
-enum Ordering {
-    Equal,
-    LessThan,
-    GreaterThan
+enum Ordering : char {
+    Equal = '=',
+    LessThan = '<',
+    GreaterThan = '>'
 }
 
 alias GoalValue = SumType!(int, TimeOfDay, bool);
@@ -125,11 +125,8 @@ Goal parseGoal(string goal) {
     }
 
     Ordering order = Ordering.Equal;
-    if (goal.startsWith('<')) {
-        order = Ordering.LessThan;
-        goal = goal[1..$];
-    } else if (goal.startsWith('>')) {
-        order = Ordering.GreaterThan;
+    if (goal[0].isOrdering()) {
+        order = cast(Ordering)goal[0];
         goal = goal[1..$];
     }
 
@@ -195,6 +192,13 @@ unittest {
 
 
 private:
+
+/** Return whether a character is a valid [Ordering] character. */
+pragma(inline)
+pure @nogc nothrow
+bool isOrdering(char ch) {
+    return ch == '=' || ch == '<' || ch == '>';
+}
 
 /** Parse the integral or time value from a goal string.
 
