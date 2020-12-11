@@ -132,7 +132,6 @@ unittest {
     auto brokenDictionary = `{"2020-01-01": { "Get out of bed": }}`;
     auto notAnObject = `"2020-01-01"`;
 
-    // TODO: This first is failing with InvalidRecord.
     assertThrown!InvalidJSON(
         readRecord(FakeFile(brokenDictionary), Date(2020, 01, 01)));
     assertThrown!InvalidJSON(
@@ -226,8 +225,6 @@ Tuple!(size_t, Token) readToken(in const(char[]) line)
     // (invalid record).
     char[] token;
     bool inString = false;
-
-    // TODO: Custom exception type(s) for parse errors.
 
     // Our parsing here does not allow for { or : in strings; any such string
     // would be invalid and readRecord() will check that so we don't need to
