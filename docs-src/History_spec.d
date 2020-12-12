@@ -20,6 +20,7 @@ $(RAW_HTML
     Creative Commons Attribution-ShareAlike 4.0 International License</a>.
 )
 
+
 ## Record Versioning
 
 $(TIP This section basically describes semver for a file format.)
