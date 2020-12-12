@@ -7,18 +7,36 @@ import std.exception : enforce;
 
 import sumtype;
 
+
+@safe:
+
 /** A `Habit` describes a habit that we need to track. */
 struct Habit {
     Schedule schedule;
     string description;
     Goal goal;
 
+    /** Create a new [Habit] object.
+
+        Params:
+            schedule =    The repetition [Schedule|schedule] for the habit.
+            description = The name of the habit.
+            goal =        A [Goal] for the habit.
+    */
     this(Schedule schedule, string description, Goal goal) {
         this.schedule = schedule;
         this.description = description;
         this.goal = goal;
     }
 
+    /** Create a new [Habit] from the provided strings.
+
+        Params:
+            schedule =    A string denoting the habit's repetition schedule
+                          that can be parsed as a [Schedule] object.
+            description = The name of the habit.
+            goal =        An optional string that can be parsed to a [Goal] object.
+    */
     this(string schedule, string description, string goal = "") {
         // The shortest valid length is for shorthand days (like "M").
         enforce(schedule.length >= 1, "Invalid schedule: " ~ schedule);
@@ -31,20 +49,9 @@ struct Habit {
         this.goal = parseGoal(goal);
     }
 
-    // Icky but convenient.
-    this(string[] fields)
-        in(fields.length == 2 || fields.length == 3)
-    {
-        if (fields.length == 2) {
-            this(fields[0], fields[1]);
-        } else {
-            this(fields[0], fields[1], fields[2]);
-        }
-    }
+    /** Determine whether two [Habit]s are equal.
 
-    /** Determine whether two `Habit`s are equal.
-
-        Habits are identified by the content of their descriptions.
+        Equality is determined by the content of their descriptions.
     */
     bool opEquals()(auto ref const typeof(this) other) const {
         return this.description == other.description;

@@ -54,13 +54,15 @@ Habit[] readHabits(string filePath) {
             fields ~= field.strip().dup();
         }
 
-        if (fields.length != 2 && fields.length != 3) {
+        if (fields.length == 2) {
+            habits ~= Habit(fields[0], fields[1]);
+        } else if (fields.length == 3) {
+            habits ~= Habit(fields[0], fields[1], fields[2]);
+        } else {
             throw new Exception(
                 "Invalid number of fields in habits file:\n\t" ~ cast(string)buf
             );
         }
-
-        habits ~= Habit(fields);
     }
 
     return habits;
