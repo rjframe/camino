@@ -39,7 +39,7 @@ We provide a simple and consistent interface to manage:
 The above habit types can typically be combined -- "two exercises three times a
 day." If something makes sense for your needs, we need to support it.
 
-See [Usage](#usage) below or [Design.md](docs/Design.md) for the
+See [Usage](#usage) below or [Design.md](docs-src/Design.md) for the
 planned user interface.
 
 
@@ -112,9 +112,9 @@ Habit tracking will be in a JSON list file, so you can easily edit it if
 necessary and have options for tooling, integrations, and reporting outside of
 camino.
 
-See [Design.md](Design.md) for the probable command-line interface. There is
-also a draft specification for
-[history tracking](generated-docs/history_spec.html).
+See [Design.md](docs-src/Design.md) for the probable command-line interface.
+There is also a draft specification for
+[history tracking](docs/history_spec.html).
 
 
 ### Known Issues
@@ -129,9 +129,9 @@ an issue first so we can discuss what you would like to do.
 
 And don't forget the tests!
 
-You can find generated documentation [here](generated-docs/index.html) (it is
-missing private members, and links to standard library functions are currently
-dead). You can generate the documentation locally with
+You can find generated documentation [here](docs/index.html) (it is missing
+private members, and links to standard library functions are currently dead).
+You can generate the documentation locally with
 [adrdox](https://github.com/adamdruppe/adrdox). Documentation syntax is
 available with
 [adrdox's documentation](http://dpldocs.info/experimental-docs/adrdox.syntax.html).
