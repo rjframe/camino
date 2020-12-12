@@ -39,8 +39,8 @@ We provide a simple and consistent interface to manage:
 The above habit types can typically be combined -- "two exercises three times a
 day." If something makes sense for your needs, we need to support it.
 
-See [Usage](#usage) below or [Design.md](Design.md) for the
-planned interface.
+See [Usage](#usage) below or [Design.md](docs/Design.md) for the
+planned user interface.
 
 
 ### Why?
@@ -57,18 +57,19 @@ out a design.
 
 ### License
 
-This project is licensed under the MIT license - see [LICENSE.md](LICENSE.md)
-for details.
+Unless otherwise noted (typically specifications or other documentation),
+everything in this project is licensed under the MIT license - see
+[LICENSE.md](LICENSE.md) for details.
 
 
 ## Getting Started
 
 ### Build
 
-To build camino, you'll need the D compiler and dub. On Linux you can likely use
-your package manager; install dub and one of the dmd (reference compiler), gdc
-(GCC-backend) or ldc (LLVM-backend) compilers. Otherwise you can obtain them
-from [the D website](https://dlang.org/download.html).
+To build camino, you'll need the D compiler and dub (a build tool). On Linux you
+can likely use your package manager; install dub and one of the dmd (reference
+compiler), gdc (GCC-backend) or ldc (LLVM-backend) compilers. Otherwise you can
+obtain them from [the D website](https://dlang.org).
 
 You can run unit tests by running `dub test` and build the application via
 `dub build -b release`.
@@ -103,7 +104,7 @@ weekly      Read a book         500 pages
 # Three exercises, three times a day.
 3 daily     Spanish             3 exercises
 
-# The '-' makes it an undesireable habit. This only matters for reporting.
+# The '-' makes it an undesireable habit.
 -daily      Sleep in
 ```
 
@@ -111,7 +112,9 @@ Habit tracking will be in a JSON list file, so you can easily edit it if
 necessary and have options for tooling, integrations, and reporting outside of
 camino.
 
-See [Design.md](Design.md) for the probable command-line interface.
+See [Design.md](Design.md) for the probable command-line interface. There is
+also a draft specification for
+[history tracking](generated-docs/history_spec.html).
 
 
 ### Known Issues
@@ -125,6 +128,19 @@ Pull requests are welcome. For major features or breaking changes, please open
 an issue first so we can discuss what you would like to do.
 
 And don't forget the tests!
+
+You can find generated documentation [here](generated-docs/index.html) (it is
+missing private members, and links to standard library functions are currently
+dead). You can generate the documentation locally with
+[adrdox](https://github.com/adamdruppe/adrdox). Documentation syntax is
+available with
+[adrdox's documentation](http://dpldocs.info/experimental-docs/adrdox.syntax.html).
+
+For now, the only hard rule in code style is 80 characters per line, with the
+possible exception of long strings in unit tests. I personally think that
+community rules and guidelines should be made by the community, which by
+definition requires the presence of more than one person. If you'd like guidance
+on anything feel free to ask in a discussion or ticket, or submit a draft PR.
 
 
 ### Acknowledgments

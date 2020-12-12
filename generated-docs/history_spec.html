@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+        <title>History Tracking File Specification (history_spec)</title>
+	<meta charset="utf-8" />
+	<meta content="width=device-width, initial-scale=1" name="viewport" />
+        <link href="style.css" rel="stylesheet" />
+        <script src="script.js" type="text/javascript"></script>
+
+	
+	<link href="search-results.html" rel="prefetch" />
+</head>
+<body>
+	<div id="page-header">
+		<div id="logotype">
+		<span>Documentation</span>
+		<nav>
+			<a href="http://dlang.org/">Dlang.org</a>
+		</nav>
+		</div>
+
+		<form action="search-docs.html" id="search">
+			<input name="searchTerm" placeholder="Find a symbol name..." type="search" />
+			<input type="submit" value="Go" />
+		</form>
+	</div>
+	<div id="page-body">
+		<div id="page-content">
+		<h1>History Tracking File Specification</h1><div class="breadcrumbs"></div><div><div class="documentation-comment synopsis"><div><p>The history tracking file is a JSONL (JSON list) document; each line is a
+complete JSON object containing a single day's record.</p><p>A single history file may contain JSON objects conforming to multiple versions
+of this specification.</p><p>It is preferred but not required that records be sorted ascending by date.</p><div class="note">Note: This specification is a work-in-progress draft.</div><p><div class="user-raw-html"><a href="http://creativecommons.org/licenses/by-sa/4.0/" rel="license">
+    <img alt="Creative Commons License" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" style="border-width:0" /></a><br />
+    This specification is licensed under a <a href="http://creativecommons.org/licenses/by-sa/4.0/" rel="license">
+    Creative Commons Attribution-ShareAlike 4.0 International License</a>.
+</div></p><h2 class="user-header" id="record-versioning"><a class="header-anchor" href="#record-versioning">Record Versioning</a></h2><div class="tip">This section basically describes semver for a file format.</div><p>The record version will be recorded as a string of three numbers separated by a
+decimal point, in the format &quot;major.minor.patch&quot;.</p><p>Version numbers shall be incremented based on the types of changes in the table
+below. &quot;Backward&quot; and &quot;forward&quot; are defined in relation to an application
+designed to work with a specific record version. &quot;Backward compatible&quot; means
+that older applications can work with the newer record spec; and &quot;forward
+compatible&quot; means that newer applications will be able to work with older
+formats.</p><table class="small-table"><thead><tr><th>Type of specification change</th><th>Versioning Change</th></tr></thead><tbody><tr><td>Backward compatible changes</td><td>Increment patch version</td></tr><tr><td>Forward compatible changes</td><td>Increment minor version; reset patch</td></tr><tr><td>Breaking changes</td><td>Increment major version; reset patch, minor</td></tr></tbody></table><div class="sidebar"><aside>This definition allows you to work with the latest version available without
+    studying older version specifications. For example, if 1.4.5 is the most
+    recent spec version, you can write your application against it and use it on
+    any 1.x versions up to 1.4.x.</aside></div><p>&quot;Compatible&quot; here refers to safely reading the record. If an application
+modifies a compatible record with a version number higher than that it was
+explicitly designed to handle, it must assume that the portions of the record it
+does not understand are valid in the specified record version and preserve them
+(additional fields, etc.).</p><p>For example, an application designed for records at version 1.0.0 can safely
+read a record versioned 1.0.1; if it writes to the record, it must preserve
+anything it does not understand, under the assumption that it is valid for
+1.0.1. However, that application cannot safely read a record at version 1.1.0.</p><p>An application capable of reading records versioned 1.2.0 can safely read a
+record at 1.1.0 (as well as 1.0.0); if that application was not designed to
+write records at version 1.1.0 however, it must make any updates as 1.2.0
+(upgrade the record).</p><p>An application only capable of working with version 2.0.0 of the specification
+would be unable to safely read or write anything versioned 1.x.y or 3.x.y.</p></div> <div id="table-of-contents"><ol class="heading-level-2"><li><a href="#record-versioning">Record Versioning</a></li><li><a href="#record-schema">Record Schema</a></li><ol class="heading-level-3"><li><a href="#version-1.0.0">Version 1.0.0</a></li><ol class="heading-level-4"><li><a href="#still-to-determine">Still To Determine</a></li></ol></ol></ol></div></div></div><div class="annotated-prototype"></div><div><div class="documentation-comment detailed-description"><div><h2 class="user-header" id="record-schema"><a class="header-anchor" href="#record-schema">Record Schema</a></h2><h3 class="user-header" id="version-1.0.0"><a class="header-anchor" href="#version-1.0.0">Version 1.0.0</a></h3><p>No JSON object may contain keys or values not explicitly described in this
+specification.</p><p>Each record (top-level object) will have two keys: a date and a version
+specifier.</p><p>The first key in the record must be a date in the format &quot;YYYY-MM-DD&quot;. The value
+of this key will be the habit instance data within a JSON object.</p><p>The second key/value pair will be <tt class="inline-code">&quot;v&quot;: &quot;1.0.0&quot;</tt>.</p><p>The base (empty) record then is: <tt class="inline-code">{&quot;2020-01-01&quot;: {}, &quot;v&quot;: &quot;1.0.0&quot;}</tt></p><div class="pitfall">The date must come first; this is invalid:
+    <tt class="inline-code">{&quot;v&quot;: &quot;1.0.0&quot;, &quot;2020-01-01&quot;: {}}</tt><div class="note">Note: This is a departure from the JSON specification.</div></div><p>The value of the date key is an object containing key/value pairs of habit data.
+Each key is the name of a habit as specified by the habits file, and the
+respective values contain instance data pertaining to its completion state.</p><p>The value of a habit key must be either a boolean value, the string &quot;skip&quot;, or a
+JSON object.</p><p>That object may contain a <tt class="inline-code">goal</tt> key; if <tt class="inline-code">goal</tt> is absent, readers must
+consider it to be an implicit boolean <tt class="inline-code">true</tt> value.</p><p>The value of the <tt class="inline-code">goal</tt> key will be one of:</p><ul class="user-list"><li>A boolean value</li><li>An integral value</li><li>A string representing an integral or time value, preceded by an ordering
+      character ('&lt;', '&gt;', or '=').</li><li>A string representing a time value without a preceding ordering character.
+      In this case an '=' is implied.</li></ul><p>The habit object must also contain one and only one of an <tt class="inline-code">instances</tt> or
+<tt class="inline-code">actual</tt> key.</p><p>An <tt class="inline-code">instances</tt> key's value is an array of either integers or boolean values. The
+array may contain the string &quot;skip&quot; with either array type.</p><p>The type of an <tt class="inline-code">actual</tt> key's value must match that of the <tt class="inline-code">goal</tt> key, but a
+string value must not include an ordering prefix. The value of <tt class="inline-code">actual</tt> may be
+the string &quot;skip&quot; regardless of the <tt class="inline-code">goal</tt> value type.</p><p>Some examples:</p><pre class="block-code" data-language="javascript">{<span class="highlighted-string">&quot;2020-01-01&quot;</span>: {<span class="highlighted-string">&quot;Habit&quot;</span>: {<span class="highlighted-string">&quot;goal&quot;</span>: true, <span class="highlighted-string">&quot;actual&quot;</span>: true}}}
+{<span class="highlighted-string">&quot;2020-01-01&quot;</span>: {<span class="highlighted-string">&quot;Habit&quot;</span>: {<span class="highlighted-string">&quot;goal&quot;</span>: true, <span class="highlighted-string">&quot;actual&quot;</span>: <span class="highlighted-string">&quot;skip&quot;</span>}}}
+{<span class="highlighted-string">&quot;2020-01-01&quot;</span>: {<span class="highlighted-string">&quot;Habit&quot;</span>: {<span class="highlighted-string">&quot;goal&quot;</span>: <span class="highlighted-number">100</span>, <span class="highlighted-string">&quot;instances&quot;</span>: [<span class="highlighted-number">50</span>, <span class="highlighted-number">50</span>]}}}
+{<span class="highlighted-string">&quot;2020-01-01&quot;</span>: {<span class="highlighted-string">&quot;Habit&quot;</span>: {<span class="highlighted-string">&quot;goal&quot;</span>: <span class="highlighted-string">&quot;&lt;1000&quot;</span>, <span class="highlighted-string">&quot;instances&quot;</span>: [<span class="highlighted-number">100</span>, <span class="highlighted-number">200</span>]}}}
+{<span class="highlighted-string">&quot;2020-01-01&quot;</span>: {<span class="highlighted-string">&quot;Habit&quot;</span>: {<span class="highlighted-string">&quot;goal&quot;</span>: <span class="highlighted-string">&quot;&lt;1000&quot;</span>, <span class="highlighted-string">&quot;instances&quot;</span>: [<span class="highlighted-number">100</span>, <span class="highlighted-string">&quot;skip&quot;</span>]}}}
+{<span class="highlighted-string">&quot;2020-01-01&quot;</span>: {<span class="highlighted-string">&quot;Habit&quot;</span>: {<span class="highlighted-string">&quot;goal&quot;</span>: <span class="highlighted-string">&quot;&lt;12:30&quot;</span>, <span class="highlighted-string">&quot;actual&quot;</span>: <span class="highlighted-string">&quot;11:30&quot;</span>}}}
+{<span class="highlighted-string">&quot;2020-01-01&quot;</span>: {<span class="highlighted-string">&quot;Habit&quot;</span>: {<span class="highlighted-string">&quot;actual&quot;</span>: true}}}
+{<span class="highlighted-string">&quot;2020-01-01&quot;</span>: {<span class="highlighted-string">&quot;Habit&quot;</span>: {<span class="highlighted-string">&quot;instances&quot;</span>: [true, true, false]}}}
+{<span class="highlighted-string">&quot;2020-01-01&quot;</span>: {<span class="highlighted-string">&quot;Habit&quot;</span>: {<span class="highlighted-string">&quot;goal&quot;</span>: <span class="highlighted-number">4</span>, <span class="highlighted-string">&quot;instances&quot;</span>: [<span class="highlighted-number">4</span>, <span class="highlighted-number">3</span>, <span class="highlighted-string">&quot;skip&quot;</span>]}}}
+{<span class="highlighted-string">&quot;2020-01-01&quot;</span>: {<span class="highlighted-string">&quot;Habit&quot;</span>: {<span class="highlighted-string">&quot;goal&quot;</span>: <span class="highlighted-number">4</span>, <span class="highlighted-string">&quot;instances&quot;</span>: [<span class="highlighted-number">4</span>, <span class="highlighted-number">3</span>, <span class="highlighted-number">0</span>]}}}</pre><p>A habit value type of boolean or the string &quot;skip&quot; is shorthand; see the table
+below.</p><table class="small-table"><thead><tr><th>Short Record</th><th>Equivalent Long Record</th></tr></thead><tbody><tr><td><tt class="inline-code">{&quot;Habit&quot;: true}</tt></td><td><tt class="inline-code">{&quot;Habit&quot;: {&quot;goal&quot;: true, &quot;actual&quot;: true}}</tt></td></tr><tr><td><tt class="inline-code">{&quot;Habit&quot;: false}</tt></td><td><tt class="inline-code">{&quot;Habit&quot;: {&quot;goal&quot;: true, &quot;actual&quot;: false}}</tt></td></tr><tr><td><tt class="inline-code">{&quot;Habit&quot;: &quot;skip&quot;}</tt></td><td><tt class="inline-code">{&quot;Habit&quot;: {&quot;goal&quot;: true, &quot;actual&quot;: &quot;skip&quot;}}</tt></td></tr></tbody></table><h4 class="user-header" id="still-to-determine"><a class="header-anchor" href="#still-to-determine">Still To Determine</a></h4><ol class="user-list"><li>Do I need to describe the interpretation of records? That requires
+      discussing the habits file; or at least the semantics of it.</li></ol></div></div></div></div>
+		<div id="page-nav">
+		<span class="type-separator">Articles</span><ul><li><a class="Article current" href="history_spec.html">History Tracking File Specification</a></li></ul><span class="type-separator">modules</span><ul><li><a class="module" href="camino.html">camino</a></li></ul></div>
+	</div>
+	<div id="page-footer">Page generated by <a href="https://github.com/adamdruppe/adrdox">adrdox</a></div>
+</body>
+</html>

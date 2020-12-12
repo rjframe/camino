@@ -1,4 +1,4 @@
-# Habit Tracking Design Document
+# Preliminary Habit Tracking Design Document
 
 Types of habits:
 - daily, weekly (fixed-date), monthly
@@ -38,6 +38,8 @@ positive goal becomes negative).
 
 I probably need to explicitly record all goals the first time we run for a day;
 this way we can differentiate failure versus non-existent goals in reports.
+
+The full specification for the history file is in History_spec.md.
 
 ```
 // The actual file will be a JSON list; this is easier to read:
