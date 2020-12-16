@@ -155,3 +155,26 @@ class InvalidRecord : Exception {
 
     private JSONValue record;
 }
+
+/** Thrown when a user command or input does not make sense in the current
+    context.
+*/
+class InvalidCommand : Exception {
+
+    /** Create a new [InvalidCommand] exception. */
+    @nogc nothrow pure @safe
+    this(string msg) {
+        super(msg);
+    }
+
+    /** Create a new [InvalidCommand] exception. */
+    @nogc nothrow pure @safe
+    this(
+        string msg,
+        string file = __FILE__,
+        ulong line = cast(ulong)__LINE__,
+        Throwable inner = null
+    ) {
+        super(msg, file, line, inner);
+    }
+}
