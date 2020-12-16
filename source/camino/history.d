@@ -8,7 +8,7 @@ import std.stdio : File;
 import std.typecons : Tuple;
 
 import camino.exception;
-import camino.goal;
+import camino.goal : Actual = GoalValue;
 import camino.habit;
 
 import sumtype;
@@ -16,16 +16,47 @@ import sumtype;
 
 enum Task { Complete, Incomplete };
 
-alias Update = SumType!(Task, Goal);
+alias Update = SumType!(Task, Actual, Instance);
+
+enum Skip : string { Skip = "skip" };
+alias Instance = SumType!(ulong, bool, Skip);
 
 
-/** Update the specified `Habit` for the given date according to `Update`. */
+/** Update the specified `Habit` for the given date.
+
+    Params:
+        history = An opened file from which to read records.
+        date    = the date to update.
+        habit   = The habit whose status to update.
+        update  = The action to record.
+
+    Throws: InvalidRecord, InvalidCommand
+
+    TODO: finish documentation, implementation.
+*/
 void update(FILE = File)(FILE history, Date date, Habit habit, Update update) {
     import std.stdio : writeln; // tmp
 
     auto record = readRecord(history, date);
 
-    /* Next steps: modify, reserialize, replace at line.
+    writeln("\nUpdating: ", habit.description);
+    writeln("Current: ", record);
+
+    // TODO: Throw exception if the record does not already include the habit?
+    // We need to have a complete record, and requiring that it exist prior to
+    // updating makes that simpler for us here.
+
+    auto newRecord = update.match!(
+        (Task t) => JSONValue(t == Task.Complete),
+        (Actual a) => a.toJSONValue(),
+        (Instance i) => i.match!(
+                (bool b) => JSONValue(b),
+                (ulong l) => JSONValue(l),
+                (Skip s) => JSONValue("skip")
+            )
+    );
+
+    /* Next steps: reserialize, replace at line.
 
        If we're not the last line of the file, copy everything to a temp file,
        fixing the updated record, then replace the temp w/ the history file.
@@ -33,17 +64,13 @@ void update(FILE = File)(FILE history, Date date, Habit habit, Update update) {
        case
      */
 
-    writeln("\nCurrent: ", record);
-    //writeln("\nInner: ", record[date.toISOExtString()]);
+    writeln("newRec: ", newRecord);
 
-    auto newRecord = update.match!(
-        (Task t) => JSONValue(t == Task.Complete),
-        (Goal g) => g.toJSONValue()
-    );
+    // TODO: If we're an instance, I want to append to an existing instance
+    // rather than replace. The other types can just be replaced.
+    record[date.toISOExtString()][habit.description] = newRecord;
 
-    //record[date.toISOExtString()][habit.description] = newRecord;
-
-
+    writeln("\n*** updated: ", record);
 }
 
 /** Read the record for the specified date from the given history file.
@@ -154,8 +181,134 @@ unittest {
 
 private:
 
-enum Symbol { Brace, Colon };
+/** Serialze an [Actual] object as a [JSONValue]. */
+pragma(inline)
+pure nothrow
+JSONValue toJSONValue(Actual actual) {
+    import std.exception : assertNotThrown;
 
+    // JSONValue's constructor can throw on some invalid assignments, but we are
+    // guaranteed to be valid here.
+    return actual.match!(
+        (TimeOfDay t) => JSONValue(["actual": t.toISOExtString()]),
+        (bool b) => JSONValue(["actual": b]),
+        (int i) => JSONValue(["actual": i])
+    ).assertNotThrown();
+}
+
+/** Update the specified record with the provided instance data.
+
+    Notes:
+
+    This function is not able to update a previously-set instance; only the next
+    unset instance.
+
+    Throws:
+
+    [InvalidRecord] if the JSON record is invalid.
+
+    [InvalidCommand] if all instances have already been set.
+*/
+void updateInstance(ref JSONValue record, const Instance newInstance) {
+    import std.json : JSONType;
+
+    // Insert the given value into the instances array.
+    void insert(T)(ref JSONValue record, T value) {
+        enforce(
+            validateInstanceTypes!T(record),
+            new InvalidRecord(
+                "Cannot add value to " ~ T.stringof ~ " array.",
+                record
+            )
+        );
+
+        foreach (ref elem; record["instances"].array) {
+            if (elem.type == JSONType.null_) {
+                elem = value;
+                return;
+            }
+        }
+        throw new InvalidCommand("All habit instances have already been set.");
+    }
+
+    newInstance.match!(
+        (bool b) => insert(record, b),
+        (ulong l) => insert(record, l),
+        (Skip s) => {
+            if (! (validateInstanceTypes!ulong(record)
+                || validateInstanceTypes!bool(record)))
+            {
+                throw new InvalidRecord("Cannot add value to array.", record);
+            }
+
+            foreach (ref elem; record["instances"].array) {
+                if (elem.type == JSONType.null_) {
+                    elem = s;
+                    return;
+                }
+            }
+            throw new InvalidCommand(
+                "All habit instances have already been set."
+            );
+        }()
+    );
+}
+
+@("updateInstance updates an array of boolean values")
+unittest {
+    auto rec = JSONValue(["instances":
+        [JSONValue(true), JSONValue(false), JSONValue("skip"), JSONValue(null)]
+    ]);
+
+    updateInstance(rec, Instance(true));
+    assert(rec["instances"].array.length == 4);
+    assert(rec["instances"][0] == JSONValue(true), rec.toString());
+    assert(rec["instances"][1] == JSONValue(false), rec.toString());
+    assert(rec["instances"][2] == JSONValue("skip"), rec.toString());
+    // We changed this one:
+    assert(rec["instances"][3] == JSONValue(true), rec.toString());
+}
+
+@("updateInstance updates the next unset (non-null) value")
+unittest {
+    auto rec = JSONValue(["instances":
+        [JSONValue(true), JSONValue(null), JSONValue(null), JSONValue(null)]
+    ]);
+
+    updateInstance(rec, Instance(true));
+    assert(rec["instances"].array.length == 4);
+    assert(rec["instances"][0] == JSONValue(true), rec.toString());
+    // We changed this one:
+    assert(rec["instances"][1] == JSONValue(true), rec.toString());
+
+    assert(rec["instances"][2] == JSONValue(null), rec.toString());
+    assert(rec["instances"][3] == JSONValue(null), rec.toString());
+}
+
+@("updateInstance can add a skip")
+unittest {
+    auto rec = JSONValue(["instances":
+        [JSONValue(0), JSONValue(1), JSONValue(null), JSONValue(null)]
+    ]);
+
+    updateInstance(rec, Instance(Skip.Skip));
+    assert(rec["instances"].array.length == 4);
+    assert(rec["instances"][0] == JSONValue(0), rec.toString());
+    assert(rec["instances"][1] == JSONValue(1), rec.toString());
+    // We changed this one:
+    assert(rec["instances"][2] == JSONValue("skip"), rec.toString());
+
+    assert(rec["instances"][3] == JSONValue(null), rec.toString());
+}
+
+@("updateInstance throws if all instances have previously been set.")
+unittest {
+    import std.exception : assertThrown;
+    auto rec = JSONValue(["instances": [JSONValue(0), JSONValue(1)]]);
+    assertThrown!InvalidCommand(updateInstance(rec, Instance(Skip.Skip)));
+}
+
+enum Symbol { Brace, Colon };
 alias Token = SumType!(Symbol, string);
 
 /** Read and return a stream of tokens from a partial JSON line.
@@ -281,4 +434,77 @@ unittest {
     assertThrown!InvalidJSON(readToken("[1]"));
     assertThrown!InvalidJSON(readToken("1"));
     assertThrown!InvalidJSON(readToken("}"));
+}
+
+/** Determine whether the provided [JSONValue] is a valid instance array. */
+pure nothrow
+bool validateInstanceTypes(T)(in JSONValue arr)
+    if (is(T == ulong) || is(T == bool))
+{
+    import std.json : JSONType;
+
+    scope(failure) { return false; }
+
+    if (arr.type != JSONType.object || arr["instances"].type != JSONType.array)
+    {
+        return false;
+    }
+
+    // We use this to work around the awkwardness of JSONValue's type
+    // handling and separate the compile time and run time conditional
+    // statements.
+    static if (is(T == bool)) {
+        const typeCheck =
+            "elem.type == JSONType.true_ || elem.type == JSONType.false_";
+    } else {
+        const typeCheck =
+            "elem.type == JSONType.uinteger || elem.type == JSONType.integer";
+    }
+
+    bool foundNull = false;
+
+    foreach (elem; arr["instances"].array) {
+        if (elem.type == JSONType.null_) {
+            foundNull = true;
+        } else if (mixin(typeCheck)) {
+            if (foundNull) return false;
+        } else if (elem.type == JSONType.string) {
+            if (foundNull) return false;
+            return elem.str == "skip";
+        } else {
+            // Invalid element type.
+            return false;
+        }
+    }
+
+    return true;
+}
+
+@("validateInstanceTypes correctly validates Instance arrays")
+unittest {
+    auto boolean = JSONValue(
+        ["instances": [JSONValue(true), JSONValue(false),
+            JSONValue("skip"), JSONValue(null)]]);
+    auto integral = JSONValue(
+        ["instances": [JSONValue(1), JSONValue(2),
+            JSONValue("skip"), JSONValue(3), JSONValue(4)]]);
+
+    auto noMixedTypes = JSONValue(
+        ["instances": [JSONValue(false), JSONValue(0)]]);
+    auto nothingFollowsNull = JSONValue(
+        ["instances": [JSONValue(1), JSONValue(2),
+            JSONValue(null), JSONValue(3)]]);
+    auto notAnInstance = JSONValue([JSONValue(1), JSONValue(2), JSONValue(3)]);
+
+    assert(validateInstanceTypes!bool(boolean));
+    assert(validateInstanceTypes!ulong(integral));
+
+    // No implicit conversions
+    assert(! validateInstanceTypes!ulong(boolean));
+    assert(! validateInstanceTypes!bool(integral));
+    assert(! validateInstanceTypes!ulong(noMixedTypes));
+    assert(! validateInstanceTypes!bool(noMixedTypes));
+
+    assert(! validateInstanceTypes!ulong(nothingFollowsNull));
+    assert(! validateInstanceTypes!ulong(notAnInstance));
 }
