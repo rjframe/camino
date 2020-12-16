@@ -14,7 +14,7 @@ module camino.test_util;
     ---
     import std.stdio : File, writeln;
 
-    void readFile(FILE = File)(File file) {
+    void readFile(FILE = File)(FILE file) {
         foreach (line; file.byLine()) {
             writeln(line);
         }
