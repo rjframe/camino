@@ -26,9 +26,9 @@ alias GoalValue = SumType!(int, TimeOfDay, bool);
 
 /** Represents a goal as specified in a habits file. */
 struct Goal {
-    Ordering ordering;
-    GoalValue goal;
-    string unit;
+    Ordering ordering = Ordering.Equal;
+    GoalValue goal = GoalValue(true);
+    string unit = "";
 
     /** Serialize this goal to a [std.json.JSONValue]. */
     pure nothrow
