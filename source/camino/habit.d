@@ -10,7 +10,7 @@ import sumtype;
 
 @safe:
 
-/** A `Habit` describes a habit that we need to track. */
+/** A [Habit] describes a habit that we need to track. */
 struct Habit {
     Schedule schedule;
     string description;

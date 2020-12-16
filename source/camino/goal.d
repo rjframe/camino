@@ -276,7 +276,7 @@ unittest {
     assertThrown!InvalidGoal(parseGoalValue("123a"));
 }
 
-/** Parse a time string to a `TimeOfDay` object.
+/** Parse a time string to a [TimeOfDay] object.
 
     The input string must be a 24-hour time in the format `[H]H:MM[:SS]`.
 
