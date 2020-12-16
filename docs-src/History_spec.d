@@ -97,8 +97,8 @@ The value of the date key is an object containing key/value pairs of habit data.
 Each key is the name of a habit as specified by the habits file, and the
 respective values contain instance data pertaining to its completion state.
 
-The value of a habit key must be either a boolean value, the string "skip", or a
-JSON object.
+The value of a habit key must be either a boolean value, the string "skip", a
+JSON object, or `null`.
 
 That object may contain a `goal` key; if `goal` is absent, readers must
 consider it to be an implicit boolean `true` value.
@@ -117,11 +117,16 @@ The habit object must also contain one and only one of an `instances` or
 `actual` key.
 
 An `instances` key's value is an array of either integers or boolean values. The
-array may contain the string "skip" with either array type.
+array may contain `null` or the string "skip" with either array type.
 
 The type of an `actual` key's value must match that of the `goal` key, but a
 string value must not include an ordering prefix. The value of `actual` may be
-the string "skip" regardless of the `goal` value type.
+`null` or the string "skip" regardless of the `goal` value type.
+
+$(NOTE
+    TODO: For a goal of "<1000", this means the actual must be the string "1000"
+    -- is any reason not to allow the number 1000? I cannot think of any.
+)
 
 
 Some examples:
@@ -139,8 +144,8 @@ Some examples:
 {"2020-01-01": {"Habit": {"goal": 4, "instances": [4, 3, 0]}}}
 ```
 
-A habit value type of boolean or the string "skip" is shorthand; see the table
-below.
+A habit value type of boolean, `null`, or the string "skip" is shorthand; see
+the table below.
 
 $(SMALL_TABLE
 | Short Record        | Equivalent Long Record                        |
@@ -148,6 +153,7 @@ $(SMALL_TABLE
 | `{"Habit": true}`   | `{"Habit": {"goal": true, "actual": true}}`   |
 | `{"Habit": false}`  | `{"Habit": {"goal": true, "actual": false}}`  |
 | `{"Habit": "skip"}` | `{"Habit": {"goal": true, "actual": "skip"}}` |
+| `{"Habit": null}`   | `{"Habit": {"goal": true, "actual": null}}`   |
 )
 
 
