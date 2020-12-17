@@ -117,8 +117,6 @@ JSONValue readRecord(FILE = File)(FILE history, in Date date) {
             )
         );
 
-        // This check is technically not necessary, since this is when
-        // readTokenStream returns.
         enforce(
             tokens[2].tryMatch!(
                 (Symbol s) => s == Symbol.Colon
