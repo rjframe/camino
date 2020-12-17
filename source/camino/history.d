@@ -97,7 +97,6 @@ void update(FILE = File)(FILE history, Date date, Habit habit, Update update) {
 */
 JSONValue readRecord(FILE = File)(FILE history, in Date date) {
     import std.json : parseJSON;
-    import std.range : stride;
 
     foreach (line; history.byLine()) {
         scope(failure) {
