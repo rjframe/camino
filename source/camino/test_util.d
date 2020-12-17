@@ -1,8 +1,6 @@
 /** Contains helper code and objects for use in unit tests. */
 module camino.test_util;
 
-@safe:
-
 /** Fake a [std.stdio.File] for unit tests.
 
     Instead of passing a file's path to the constructor, pass the text to be
@@ -44,6 +42,16 @@ struct FakeFile {
     pure
     auto byLine() const {
         return FakeFileByLineRange(text);
+    }
+
+    size_t readln(C, R = dchar)(ref C[] buf, R terminator = '\n') {
+        import std.algorithm : countUntil;
+        auto len = text.countUntil(terminator);
+        assert(len+1 <= text.length);
+        buf = cast(C[])text[0..len+1];
+
+        text = text[len + 1 .. $];
+        return len + 1;
     }
 
     private:
@@ -88,7 +96,7 @@ private struct FakeFileByLineRange {
     string[] text;
 }
 
-@("FakeFile can read text line by line")
+@("FakeFile can read text byLine")
 unittest {
     auto text =
 `Line 1
@@ -101,4 +109,30 @@ Line 3`;
     assert(reader.moveFront() == "Line 1");
     assert(reader.moveFront() == "Line 2");
     assert(reader.front() == "Line 3");
+}
+
+@("FakeFile readln with buffer")
+unittest {
+    import std.conv : to;
+
+    auto text =
+`Line 1
+Line 2
+Line 3
+`;
+
+    auto file = FakeFile(text);
+    size_t line;
+    char[] buf;
+
+    int count = 1;
+
+    while (file.readln(buf) > 0) {
+        assert(buf.length == 7, buf.length.to!string());
+        assert(
+            buf.to!string() == "Line " ~ count.to!string() ~ "\n",
+            buf.to!string()
+        );
+        count += 1;
+    }
 }

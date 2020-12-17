@@ -97,13 +97,18 @@ void update(FILE = File)(FILE history, Date date, Habit habit, Update update) {
 JSONValue readRecord(FILE = File)(FILE history, in Date date) {
     import std.json : parseJSON;
 
-    foreach (line; history.byLine()) {
+    size_t file_pos = 0;
+    char[] buf;
+
+    while (history.readln(buf) > 0) {
+        file_pos += buf.length;
+
         scope(failure) {
             import std.conv : text;
-            throw new InvalidJSON("Record is not a JSON object.", line.text);
+            throw new InvalidJSON("Record is not a JSON object.", buf.text);
         }
 
-        auto tokens = readTokenStream(line);
+        auto tokens = readTokenStream(buf);
         enforce(tokens.length == 3);
 
         enforce(
@@ -124,7 +129,7 @@ JSONValue readRecord(FILE = File)(FILE history, in Date date) {
             (string s) => s
         );
 
-        if (rec_date == date.toISOExtString()) return parseJSON(line);
+        if (rec_date == date.toISOExtString()) return parseJSON(buf);
     }
 
     throw new InvalidRecord("No record found for specified date.");
@@ -154,8 +159,8 @@ unittest {
     import std.exception : assertThrown;
     import camino.test_util : FakeFile;
 
-    auto brokenDictionary = `{"2020-01-01": { "Get out of bed": }}`;
-    auto notAnObject = `"2020-01-01"`;
+    auto brokenDictionary = "{\"2020-01-01\": { \"Get out of bed\": }}\n";
+    auto notAnObject = "\"2020-01-01\"\n";
 
     assertThrown!InvalidJSON(
         readRecord(FakeFile(brokenDictionary), Date(2020, 01, 01)));
