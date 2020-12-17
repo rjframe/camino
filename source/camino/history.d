@@ -49,11 +49,12 @@ void update(FILE = File)(FILE history, Date date, Habit habit, Update update) {
     auto newRecord = update.match!(
         (Task t) => JSONValue(t == Task.Complete),
         (Actual a) => a.toJSONValue(),
-        (Instance i) => i.match!(
-                (bool b) => JSONValue(b),
-                (ulong l) => JSONValue(l),
-                (Skip s) => JSONValue("skip")
-            )
+        (Instance i) => {
+            return updateInstance(
+                record[date.toISOExtString()][habit.description],
+                i
+            );
+        }()
     );
 
     /* Next steps: reserialize, replace at line.
@@ -66,8 +67,6 @@ void update(FILE = File)(FILE history, Date date, Habit habit, Update update) {
 
     writeln("newRec: ", newRecord);
 
-    // TODO: If we're an instance, I want to append to an existing instance
-    // rather than replace. The other types can just be replaced.
     record[date.toISOExtString()][habit.description] = newRecord;
 
     writeln("\n*** updated: ", record);
@@ -208,11 +207,14 @@ JSONValue toJSONValue(Actual actual) {
 
     [InvalidCommand] if all instances have already been set.
 */
-void updateInstance(ref JSONValue record, const Instance newInstance) {
+// TODO: This will not be sufficient for all updates; e.g., read 500 pages
+// weekly -- we won't have a fixed number of instances to track but only care
+// about the sum of whatever instances are present. Need to rethink this.
+JSONValue updateInstance(JSONValue record, const Instance newInstance) {
     import std.json : JSONType;
 
     // Insert the given value into the instances array.
-    void insert(T)(ref JSONValue record, T value) {
+    auto insert(T)(JSONValue record, T value) {
         enforce(
             validateInstanceTypes!T(record),
             new InvalidRecord(
@@ -224,13 +226,13 @@ void updateInstance(ref JSONValue record, const Instance newInstance) {
         foreach (ref elem; record["instances"].array) {
             if (elem.type == JSONType.null_) {
                 elem = value;
-                return;
+                return record;
             }
         }
         throw new InvalidCommand("All habit instances have already been set.");
     }
 
-    newInstance.match!(
+    return newInstance.match!(
         (bool b) => insert(record, b),
         (ulong l) => insert(record, l),
         (Skip s) => {
@@ -242,8 +244,8 @@ void updateInstance(ref JSONValue record, const Instance newInstance) {
 
             foreach (ref elem; record["instances"].array) {
                 if (elem.type == JSONType.null_) {
-                    elem = s;
-                    return;
+                    elem = JSONValue("skip");
+                    return record;
                 }
             }
             throw new InvalidCommand(
