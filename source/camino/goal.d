@@ -136,7 +136,7 @@ Goal parseGoal(string goal) {
 
     auto parsedGoal = parseGoalValue(goal);
 
-    bool isTimeValue = parsedGoal.value.match!(
+    const isTimeValue = parsedGoal.value.match!(
         (TimeOfDay _) => true,
         _ => false
     );

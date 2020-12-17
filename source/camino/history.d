@@ -186,7 +186,7 @@ Record readRecord(FILE = File)(FILE history, in Date date) {
             )
         );
 
-        auto rec_date = tokens[1].tryMatch!(
+        const rec_date = tokens[1].tryMatch!(
             (string s) => s
         );
 
@@ -410,7 +410,7 @@ Token[] readTokenStream(in const(char[]) line) {
         tokens ~= tok[1];
         idx += tok[0];
 
-        auto do_break = tok[1].match!(
+        const do_break = tok[1].match!(
             (Symbol s) => s == Symbol.Colon,
             _ => false
         );
