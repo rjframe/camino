@@ -44,6 +44,15 @@ struct FakeFile {
         return FakeFileByLineRange(text);
     }
 
+    /** Read a line from the file into the provided buffer.
+
+        The buffer will be expanded if necessary to fit the data on the line. If
+        the buffer is larger than necessary, a slice of the buffer whose length
+        matches that of the data is returned.
+
+        Returns the number of characters read (this will always match
+        buf.length).
+    */
     size_t readln(C, R = dchar)(ref C[] buf, R terminator = '\n') {
         import std.algorithm : countUntil;
         auto len = text.countUntil(terminator);
@@ -122,7 +131,6 @@ Line 3
 `;
 
     auto file = FakeFile(text);
-    size_t line;
     char[] buf;
 
     int count = 1;

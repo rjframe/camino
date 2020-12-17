@@ -13,12 +13,19 @@ import camino.habit;
 
 import sumtype;
 
+/** Mark a task as complete or incomplete.
 
-enum Task { Complete, Incomplete };
+    Currently only Task.Complete is explicitly used.
+*/
+enum Task { Complete, Incomplete }
 
+/** Represents any type of update that can be made to a [Record]. */
 alias Update = SumType!(Task, Actual, Instance);
 
-enum Skip : string { Skip = "skip" };
+/** Specifies that an instance of a goal was skipped. */
+enum Skip : string { Skip = "skip" }
+
+/** Represents the data associated with an instance of a goal. */
 alias Instance = SumType!(ulong, bool, Skip);
 
 /** Stores information concerning an individual record from the history file.
@@ -207,9 +214,15 @@ unittest {
     import camino.test_util : FakeFile;
 
     auto text =
-`{"2020-01-01": { "Eat lunch": false, "Read": { "goal": 500, "instances": [100, 350, 50, 1] }, "Get out of bed": { "goal" : "<6:31", "actual": "5:00" }}}
-{"2020-01-02": { "Eat lunch": "skip", "Read": { "goal": 500, "instances": [100, 350, 50, 1] }, "Get out of bed": { "goal" : "<6:31", "actual": "5:00" }, "Litterbox": true }}
-{"2020-01-03": { "Eat lunch": false, "Read": { "goal": 500, "instances": [100, 350, 50, 1] }, "Get out of bed": { "goal" : "<6:31", "actual": "5:00" }}}`;
+`{"2020-01-01": { "Eat lunch": false, "Read": {`
+   ~ ` "goal": 500, "instances": [100, 350, 50, 1] }, "Get out of bed": {`
+      ~ ` "goal" : "<6:31", "actual": "5:00" }}}
+{"2020-01-02": { "Eat lunch": "skip", "Read": {`
+   ~ ` "goal": 500, "instances": [100, 350, 50, 1] }, "Get out of bed": {`
+      ~ ` "goal" : "<6:31", "actual": "5:00" }, "Litterbox": true }}
+{"2020-01-03": { "Eat lunch": false, "Read": {`
+   ~ ` "goal": 500, "instances": [100, 350, 50, 1] }, "Get out of bed": {`
+      ~ ` "goal" : "<6:31", "actual": "5:00" }}}`;
 
     assert(readRecord(FakeFile(text), Date(2020, 1, 1)) ==
         parseJSON(`{"2020-01-01": { "Eat lunch": false, "Read":
@@ -305,7 +318,7 @@ JSONValue updateInstance(JSONValue record, const Instance newInstance) {
     return newInstance.match!(
         (bool b) => insert(record, b),
         (ulong l) => insert(record, l),
-        (Skip s) => {
+        (Skip _) => {
             if (! (validateInstanceTypes!ulong(record)
                 || validateInstanceTypes!bool(record)))
             {
@@ -379,7 +392,7 @@ unittest {
     assertThrown!InvalidCommand(updateInstance(rec, Instance(Skip.Skip)));
 }
 
-enum Symbol { Brace, Colon };
+enum Symbol { Brace, Colon }
 alias Token = SumType!(Symbol, string);
 
 /** Read and return a stream of tokens from a partial JSON line.

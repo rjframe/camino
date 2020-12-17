@@ -40,9 +40,11 @@ alias RepeatInterval = SumType!(Repeat, DayOfWeek);
     period (every three weeks, etc.).
 */
 struct SpecialRepeat {
+    /** The interval at which the habit is expected to recur. */
     RepeatInterval interval;
     /** Specifies every three days, every other week, etc. */
     int numberOfIntervals;
+    /** A number of repetitions per instance associated with the goal. */
     // TODO: This is set in the goals field; should it be in this struct?
     int numberPerInstance;
     // TODO assert: SpecialRepeat always uses this instead of

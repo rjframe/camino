@@ -12,8 +12,11 @@ import sumtype;
 
 /** A [Habit] describes a habit that we need to track. */
 struct Habit {
+    /** The recurrence schedule for the habit. */
     Schedule schedule;
+    /** The name by which the habit is identified. */
     string description;
+    /** The goal to track. */
     Goal goal;
 
     /** Create a new [Habit] object.
@@ -55,5 +58,13 @@ struct Habit {
     */
     bool opEquals()(auto ref const typeof(this) other) const {
         return this.description == other.description;
+    }
+
+    /** Return a hash value of this [Habit]. */
+    pure nothrow
+    size_t toHash() const
+    {
+        // toHash() must be consistent with opEquals().
+        return this.description.hashOf();
     }
 }

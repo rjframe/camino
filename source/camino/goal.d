@@ -26,8 +26,12 @@ alias GoalValue = SumType!(int, TimeOfDay, bool);
 
 /** Represents a goal as specified in a habits file. */
 struct Goal {
+    /** Specifies whether the goal is to be below, reach, or exceed its value.
+    */
     Ordering ordering = Ordering.Equal;
-    GoalValue goal = GoalValue(true);
+    /** The value of the goal. */
+    GoalValue value = GoalValue(true);
+    /** An optional unit to describe the the goal's [Goal.value|value]. */
     string unit = "";
 
     /** Serialize this goal to a [std.json.JSONValue]. */
@@ -41,7 +45,7 @@ struct Goal {
             : ordering == Ordering.GreaterThan ? ">"
             : "";
 
-        goalString ~= goal.match!(
+        goalString ~= value.match!(
             (TimeOfDay t) => t.toISOExtString(),
             (bool b) => b.text,
             (int i) => i.text
@@ -258,7 +262,6 @@ Tuple!(GoalValue, "value", size_t, "length") parseGoalValue(string goal)
 
 @("parseGoalValue can parse a number as a number")
 unittest {
-    auto s = GoalValue(23);
     assert(parseGoalValue("23") == tuple(GoalValue(23), 2));
     assert(parseGoalValue("23 somethings") == tuple(GoalValue(23), 2));
 }

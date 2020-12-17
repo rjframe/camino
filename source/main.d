@@ -33,9 +33,18 @@ int main(string[] args) {
     update(File("history.jsonl"), Date(2020, 1, 1), habits[0],
             Update(Task.Complete));
 
-    return 0;
+    import camino.goal : Actual = GoalValue;
+
+    update(File("history.jsonl"), Date(2020, 1, 1), habits[2],
+            Update(Actual(2)));
+
+    update(File("history.jsonl"), Date(2020, 1, 1), habits[6],
+            Update(Instance(2)));
+
+    return ReturnCode.Success;
 }
 
+/** Read all habits from the specified file. */
 Habit[] readHabits(string filePath) {
     import std.stdio : File;
     import std.string : entab, strip;
