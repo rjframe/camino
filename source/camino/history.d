@@ -21,6 +21,71 @@ alias Update = SumType!(Task, Actual, Instance);
 enum Skip : string { Skip = "skip" };
 alias Instance = SumType!(ulong, bool, Skip);
 
+/** Stores information concerning an individual record from the history file.
+
+    ## Notes
+
+    TODO: I should probably store the path or [std.stdio.File|File] object and
+    assert that we only refer to that one record. Since we're only dealing with
+    one file on any given run, I'm currently just assuming this.
+*/
+struct Record {
+    // TODO: make readRecord, etc. methods of this?
+
+    /** $(B $(I disabled)) */
+    // TODO: File bug on adrdox -> $(NEVER_DOCUMENT) is ignored.
+    @disable this();
+
+    /** Create a new [Record] of the specified JSON object and the file position
+        from which that object was read.
+
+        It is the caller's responsibility to validate that the [JSONValue]
+        represents a valid record.
+    */
+    pure nothrow @nogc
+    this(JSONValue record, size_t file_pos) {
+        this.rec = record;
+        this.file_pos = file_pos;
+    }
+
+    /** Retrieve the index into the source file from which the record was read.
+    */
+    pure nothrow @nogc
+    @property
+    size_t pos() const { return file_pos; }
+
+    /** Provides access to the underlying [JSONValue] record.
+
+        This method is `alias this`ed to the [Record]; operations should be
+        typically performed directly on the [Record] object instead of
+        explicitly via this method.
+
+        Examples:
+
+        ---
+        import std.json : JSONValue;
+        import std.stdio : writeln;
+
+        auto data = JSONValue(`{"2020-01-01": {}, "v": "1.0.0"}`);
+        auto record = Record(data, 0);
+
+        // These two statements are identical:
+        writeln(record.toPrettyString());
+        writeln(record.record().toPrettyString());
+        ---
+    */
+    // TODO: Should I be providing a reference or provide read-only access
+    // instead?
+    pure nothrow @nogc
+    @property
+    auto ref JSONValue record() { return rec; }
+    alias record this;
+
+    private:
+
+    JSONValue rec;
+    size_t file_pos;
+}
 
 /** Update the specified `Habit` for the given date.
 
@@ -94,15 +159,13 @@ void update(FILE = File)(FILE history, Date date, Habit habit, Update update) {
 
     [InvalidRecord] if there is no record for the given date in the file.
 */
-JSONValue readRecord(FILE = File)(FILE history, in Date date) {
+Record readRecord(FILE = File)(FILE history, in Date date) {
     import std.json : parseJSON;
 
     size_t file_pos = 0;
     char[] buf;
 
     while (history.readln(buf) > 0) {
-        file_pos += buf.length;
-
         scope(failure) {
             import std.conv : text;
             throw new InvalidJSON("Record is not a JSON object.", buf.text);
@@ -127,7 +190,11 @@ JSONValue readRecord(FILE = File)(FILE history, in Date date) {
             (string s) => s
         );
 
-        if (rec_date == date.toISOExtString()) return parseJSON(buf);
+        if (rec_date == date.toISOExtString()) {
+            return Record(parseJSON(buf), file_pos);
+        }
+
+        file_pos += buf.length;
     }
 
     throw new InvalidRecord("No record found for specified date.");
