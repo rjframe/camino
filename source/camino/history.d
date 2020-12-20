@@ -28,15 +28,8 @@ enum Skip : string { Skip = "skip" }
 /** Represents the data associated with an instance of a goal. */
 alias Instance = SumType!(ulong, bool, Skip);
 
-/** Stores information concerning an individual record from the history file.
-
-    ## Notes
-
-    TODO: I should probably store the path or [std.stdio.File|File] object and
-    assert that we only refer to that one record. Since we're only dealing with
-    one file on any given run, I'm currently just assuming this.
-*/
-struct Record {
+/** Stores information concerning an individual record from the history file. */
+struct Record(FILE = File) {
     // TODO: make readRecord, etc. methods of this?
 
     /** $(B $(I disabled)) */
@@ -49,8 +42,9 @@ struct Record {
         It is the caller's responsibility to validate that the [JSONValue]
         represents a valid record.
     */
-    pure nothrow @nogc
-    this(JSONValue record, size_t file_pos) {
+    nothrow
+    this(ref FILE history, JSONValue record, size_t file_pos) {
+        this.file = history;
         this.rec = record;
         this.file_pos = file_pos;
     }
@@ -59,7 +53,7 @@ struct Record {
     */
     pure nothrow @nogc
     @property
-    size_t pos() const { return file_pos; }
+    size_t pos() const { return this.file_pos; }
 
     /** Provides access to the underlying [JSONValue] record.
 
@@ -71,10 +65,12 @@ struct Record {
 
         ---
         import std.json : JSONValue;
-        import std.stdio : writeln;
+        import std.stdio : File, writeln;
 
+        auto sourceFile = File("path/to/file");
+        // Assume data came from sourceFile.
         auto data = JSONValue(`{"2020-01-01": {}, "v": "1.0.0"}`);
-        auto record = Record(data, 0);
+        auto record = Record!File(sourceFile, data, 0);
 
         // These two statements are identical:
         writeln(record.toPrettyString());
@@ -83,15 +79,95 @@ struct Record {
     */
     // TODO: Should I be providing a reference or provide read-only access
     // instead?
-    pure nothrow @nogc
     @property
-    auto ref JSONValue record() { return rec; }
+    pure nothrow @nogc
+    auto ref JSONValue record() const { return this.rec; }
+
     alias record this;
+
+    /** Write this record to the file, replacing the original data in the
+        record.
+
+        If the record is the last line of the file, replaces the record.
+        Otherwise, writes to a temporary file then replaces the original file
+        with the temporary.
+    */
+    // TODO: Handle/document exceptions.
+    void writeToFile() {
+        import std.stdio : LockType;
+
+        auto line = this.rec.toString();
+
+        if (this.atLastLine()) {
+            scope(exit) { this.file.unlock(); }
+
+            // TODO: length should go to the end of the file (end of existing
+            // line).
+            this.file.lock(LockType.readWrite, this.file_pos, line.length);
+
+            auto current_pos = this.file.tell();
+
+            this.file.seek(this.file_pos);
+            this.file.write(line);
+            this.file.truncate(this.file_pos + line.length);
+        } else {
+            assert(0, "not implemented");
+        }
+    }
 
     private:
 
+    /** Returns true if the record was read from the last line of the file;
+        otherwise, returns false.
+    */
+    // TODO: Document exceptions
+    bool atLastLine() {
+        scope(exit) {
+            this.file.seek(this.file_pos);
+        }
+
+        char[] buf;
+
+        this.file.seek(this.file_pos);
+        this.file.readln(buf);
+
+        return this.file.readln(buf) == 0;
+    }
+
+    FILE file;
     JSONValue rec;
-    size_t file_pos;
+    ulong file_pos;
+}
+
+@("Record.atLastLine() determines whether we're at the file's final line")
+unittest {
+    import camino.test_util : FakeFile;
+
+    auto file = FakeFile("Line 1\nLine 2\nLine 3\n");
+
+    auto record = Record!FakeFile(file, JSONValue(true), 0);
+    assert(! record.atLastLine());
+
+    record = Record!FakeFile(file, JSONValue(true), 14);
+    assert(record.atLastLine());
+}
+
+@("Record.writeToFile() updates a record at the last line")
+unittest {
+    import camino.test_util : FakeFile;
+
+    auto file = FakeFile("[false]\nfalse\n{\"val\": 1}\n");
+    auto record = Record!FakeFile(file, JSONValue([true]), 14);
+
+    record.writeToFile();
+    auto reader = record.file.byLine();
+    assert(reader.front() == "[false]", reader.front());
+    reader.popFront();
+    assert(reader.front() == "false", reader.front());
+    reader.popFront();
+    assert(reader.front() == "[true]", reader.front());
+    reader.popFront();
+    assert(reader.empty());
 }
 
 /** Update the specified `Habit` for the given date.
@@ -129,19 +205,10 @@ void update(FILE = File)(FILE history, Date date, Habit habit, Update update) {
         }()
     );
 
-    /* Next steps: reserialize, replace at line.
-
-       If we're not the last line of the file, copy everything to a temp file,
-       fixing the updated record, then replace the temp w/ the history file.
-       Otherwise, we can just replace the last line; this should be the common
-       case
-     */
-
     writeln("newRec: ", newRecord);
 
     record[date.toISOExtString()][habit.description] = newRecord;
-
-    writeln("\n*** updated: ", record);
+    record.writeToFile();
 }
 
 /** Read the record for the specified date from the given history file.
@@ -166,12 +233,13 @@ void update(FILE = File)(FILE history, Date date, Habit habit, Update update) {
 
     [InvalidRecord] if there is no record for the given date in the file.
 */
-Record readRecord(FILE = File)(FILE history, in Date date) {
+Record!FILE readRecord(FILE = File)(FILE history, in Date date) {
     import std.json : parseJSON;
 
     size_t file_pos = 0;
     char[] buf;
 
+    // TODO: Make this a do..while so I can use tell?
     while (history.readln(buf) > 0) {
         scope(failure) {
             import std.conv : text;
@@ -198,7 +266,7 @@ Record readRecord(FILE = File)(FILE history, in Date date) {
         );
 
         if (rec_date == date.toISOExtString()) {
-            return Record(parseJSON(buf), file_pos);
+            return Record!FILE(history, parseJSON(buf), file_pos);
         }
 
         file_pos += buf.length;
@@ -261,6 +329,42 @@ unittest {
 }
 
 private:
+
+/** Truncate a file to the specified size in bytes.
+
+    The current file position after a truncate call is undefined; if you need to
+    keep your position within the file, call [File.tell] prior to truncating.
+
+    Throws:
+
+    [std.stdio.FileException] on failure to truncate the file.
+    TODO Doc for Windows: seek can throw Exception, ErrnoException.
+*/
+void truncate(File file, long size) {
+    import std.file : FileException;
+
+    version(Posix) {
+        // https://linux.die.net/man/3/ftruncate
+        import core.stdc.errno : errno;
+        import core.sys.posix.unistd: ftruncate;
+
+        auto result = ftruncate(file.fileno(), size)
+            ? 0
+            : errno();
+    }
+
+    version(Windows) {
+        // https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-setendoffile
+        import core.sys.windows.windows: SetEndOfFile, GetLastError;
+
+        file.seek(size);
+        auto result = SetEndOfFile(file.windowsHandle())
+            ? 0
+            : GetLastError();
+    }
+
+    enforce(result == 0, new FileException(file.name, result));
+}
 
 /** Serialze an [Actual] object as a [JSONValue]. */
 pragma(inline)
