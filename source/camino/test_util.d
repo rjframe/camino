@@ -42,10 +42,13 @@ struct FakeFile {
     pure
     this(string text) { this.text = text.dup; }
 
+    // TODO: Copy constructor that shares the underlying text, file position.
+    //this(ref return scope A rhs) { }
+
     /** Return a range to read the file line by line. */
     pure
     auto byLine() const {
-        return FakeFileByLineRange(text.dup);
+        return FakeFileByLineRange(this.text.dup);
     }
 
     /** Read a line from the file into the provided buffer.
@@ -60,16 +63,20 @@ struct FakeFile {
     size_t readln(C, R = dchar)(ref C[] buf, R terminator = '\n') {
         import std.algorithm : countUntil;
 
-        auto len = text[pos..$].countUntil(terminator) + 1;
-        assert(len <= text.length - pos);
+        auto len = this.text[this.pos..$].countUntil(terminator) + 1;
+        assert(len <= this.text.length - this.pos);
 
-        buf = cast(C[])text[pos..pos+len];
-        pos += len;
+        buf = cast(C[]) this.text[this.pos..this.pos + len];
+        this.pos += len;
 
         return len;
     }
 
-    /** Write to the FakeFile's text buffer at its current file position. */
+    /** Write to the FakeFile's text buffer at its current file position.
+
+        The type of `S` must be a range implicitly convertible to an array of
+        `dchar`.
+    */
     void write(S...)(S args) {
         foreach (arg; args) {
             // TODO: We should handle any non-range argument; not only chars.
@@ -82,6 +89,7 @@ struct FakeFile {
 
                 const end_idx = min(this.pos + arg.length, text.length);
                 this.text.replaceInPlace(this.pos, end_idx, arg);
+
                 this.pos += arg.length;
             }
         }
@@ -99,14 +107,14 @@ struct FakeFile {
     /** Set the FakeFile's file position. */
     @trusted
     void seek(long offset) {
-        pos = offset;
+        this.pos = offset;
     }
 
     /** Get the FakeFile's current file position. */
     @property
     @trusted
     ulong tell() const {
-        return pos;
+        return this.pos;
     }
 
     /** No-op. For API compatibility. */
