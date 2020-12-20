@@ -127,6 +127,55 @@ struct FakeFile {
     /** No-op. For API compatibility. */
     void unlock(ulong start = 0, ulong length = 0) {}
 
+    /** Truncate (or grow) the file to the specified size.
+
+        NOTE: This is not a part of the [std.stdio.File] API. An equivalent
+        function for production code would be something like:
+
+        ---
+        import std.stdio : File;
+
+        void truncate(File file, long size) {
+            import std.file : FileException;
+
+            version(Posix) {
+                import core.stdc.errno : errno;
+                import core.sys.posix.unistd: ftruncate;
+
+                auto result = ftruncate(file.fileno(), size)
+                    ? 0
+                    : errno();
+            }
+
+            version(Windows) {
+                import core.sys.windows.windows: SetEndOfFile, GetLastError;
+
+                file.seek(size);
+                auto result = SetEndOfFile(file.windowsHandle())
+                    ? 0
+                    : GetLastError();
+            }
+
+            if (result != 0) {
+                throw new FileException(file.name, result);
+            }
+        }
+        ---
+    */
+    void truncate(long size) {
+        this.text = this.text[0..size];
+    }
+
+    /** Get the full text of the file.
+
+        NOTE: This is not part of the [std.stdio.File] API but is provided for
+        easy assertions.
+     */
+    @property
+    const(char[]) readText() {
+        return this.text;
+    }
+
     private:
 
     char[] text;
