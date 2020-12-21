@@ -348,7 +348,7 @@ void truncate(File file, long size) {
         import core.stdc.errno : errno;
         import core.sys.posix.unistd: ftruncate;
 
-        auto result = ftruncate(file.fileno(), size)
+        auto result = ftruncate(file.fileno(), size) == 0
             ? 0
             : errno();
     }
@@ -364,6 +364,21 @@ void truncate(File file, long size) {
     }
 
     enforce(result == 0, new FileException(file.name, result));
+}
+
+@("truncate a file")
+unittest {
+    import std.path : buildPath;
+    import unit_threaded.integration : Sandbox;
+
+    with(immutable Sandbox()) {
+        writeFile("test.txt", "abcde");
+
+        auto file = File(buildPath(testPath, "test.txt"), "r+");
+        file.truncate(3);
+
+        shouldEqualContent("test.txt", "abc");
+    }
 }
 
 /** Serialze an [Actual] object as a [JSONValue]. */
