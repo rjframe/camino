@@ -9,6 +9,13 @@
     "dependencies": {
         "sumtype": "~>0.10.2"
     },
+    "buildTypes": {
+        "unittest": {
+            "buildOptions": [
+                "unittests", "coverage", "debugMode", "debugInfo"
+            ]
+        }
+    },
     "configurations": [
         {
             "name": "executable",
