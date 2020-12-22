@@ -179,17 +179,24 @@ unittest {
         habit   = The habit whose status to update.
         update  = The action to record.
 
-    Throws: InvalidRecord, InvalidCommand
+    Throws:
 
-    TODO: finish documentation, implementation.
+    [InvalidRecord] when an error processing a record occurs.
+
+    [InvalidCommand] if an [Instance] is provided after they have all been
+    previously updated.
+
+    [std.json.JSONException] if attempting to make incompatible
+    [camino.goal.GoalValue|Actual] updates.
 */
-void update(FILE = File)(FILE history, Date date, Habit habit, Update update) {
-    import std.stdio : writeln; // tmp
-
+// TODO: Should I replace JSONException with InvalidRecord or InvalidCommand?
+void update(FILE = File)(
+    FILE history,
+    in Date date,
+    in Habit habit,
+    in Update update
+) {
     auto record = readRecord(history, date);
-
-    writeln("\nUpdating: ", habit.description);
-    writeln("Current: ", record);
 
     // TODO: Throw exception if the record does not already include the habit?
     // We need to have a complete record, and requiring that it exist prior to
@@ -197,19 +204,99 @@ void update(FILE = File)(FILE history, Date date, Habit habit, Update update) {
 
     auto newRecord = update.match!(
         (Task t) => JSONValue(t == Task.Complete),
-        (Actual a) => a.toJSONValue(),
-        (Instance i) => {
-            return updateInstance(
-                record[date.toISOExtString()][habit.description],
-                i
-            );
-        }()
+        (Actual a) =>
+            updateActual(record[date.toISOExtString()][habit.description], a),
+        (Instance i) =>
+            updateInstance(record[date.toISOExtString()][habit.description], i)
     );
-
-    writeln("newRec: ", newRecord);
 
     record[date.toISOExtString()][habit.description] = newRecord;
     record.writeToFile();
+}
+
+@("update can update a Task record.")
+unittest {
+    import camino.goal : Goal, GoalValue;
+    import camino.schedule : Repeat, Schedule;
+    import camino.test_util : FakeFile;
+
+    auto file = FakeFile(`{"2020-01-01":{"Habit":false}}`);
+
+    const habit = Habit(
+        Schedule(Repeat.Daily),
+        "Habit",
+        Goal(GoalValue(true))
+    );
+
+    update(
+        file,
+        Date(2020, 1, 1),
+        habit,
+        Update(Task.Complete)
+    );
+
+    assert(file.readText() == `{"2020-01-01":{"Habit":true}}` ~ '\n',
+        file.readText());
+}
+
+@("update can update an Actual record")
+unittest {
+    import camino.goal : Goal, GoalValue;
+    import camino.schedule : Repeat, Schedule;
+    import camino.test_util : FakeFile;
+
+    auto file = FakeFile(`{"2020-01-01":{"Habit":{"actual":10}}}`);
+
+    const habit = Habit(
+        Schedule(Repeat.Daily),
+        "Habit",
+        Goal(GoalValue(50))
+    );
+
+    update(
+        file,
+        Date(2020, 1, 1),
+        habit,
+        Update(Actual(20))
+    );
+
+    assert(file.readText() == `{"2020-01-01":{"Habit":{"actual":30}}}` ~ '\n',
+        file.readText());
+}
+
+@("update can update an Instance record")
+unittest {
+    import camino.goal : Goal, GoalValue;
+    import camino.schedule : Repeat, SpecialRepeat, Schedule;
+    import camino.test_util : FakeFile;
+
+    auto file = FakeFile(`{"2020-01-01":{"Habit":{"instances":[1, null]}}}`);
+
+    SpecialRepeat repeat = {
+        interval: Repeat.Daily,
+        numberOfIntervals: 1,
+        numberPerInstance: 2,
+        negative: false
+    };
+
+    const habit = Habit(
+        Schedule(repeat),
+        "Habit",
+        Goal(GoalValue(50))
+    );
+
+    update(
+        file,
+        Date(2020, 1, 1),
+        habit,
+        Update(Instance(20))
+    );
+
+    assert(
+        file.readText() ==
+            `{"2020-01-01":{"Habit":{"instances":[1,20]}}}` ~ '\n',
+        file.readText()
+    );
 }
 
 /** Read the record for the specified date from the given history file.
@@ -393,21 +480,6 @@ unittest {
     }
 }
 
-/** Serialze an [Actual] object as a [JSONValue]. */
-pragma(inline)
-pure nothrow
-JSONValue toJSONValue(Actual actual) {
-    import std.exception : assertNotThrown;
-
-    // JSONValue's constructor can throw on some invalid assignments, but we are
-    // guaranteed to be valid here.
-    return actual.match!(
-        (TimeOfDay t) => JSONValue(["actual": t.toISOExtString()]),
-        (bool b) => JSONValue(["actual": b]),
-        (int i) => JSONValue(["actual": i])
-    ).assertNotThrown();
-}
-
 /** Update the specified record with the provided instance data.
 
     Notes:
@@ -421,13 +493,11 @@ JSONValue toJSONValue(Actual actual) {
 
     [InvalidCommand] if all instances have already been set.
 */
-// TODO: This will not be sufficient for all updates; e.g., read 500 pages
-// weekly -- we won't have a fixed number of instances to track but only care
-// about the sum of whatever instances are present. Need to rethink this.
-JSONValue updateInstance(JSONValue record, const Instance newInstance) {
+pure
+JSONValue updateInstance(JSONValue record, in Instance newInstance) {
     import std.json : JSONType;
 
-    // Insert the given value into the instances array.
+    // Helper function to insert the given value into the instances array.
     auto insert(T)(JSONValue record, T value) {
         enforce(
             validateInstanceTypes!T(record),
@@ -521,6 +591,26 @@ unittest {
     import std.exception : assertThrown;
     auto rec = JSONValue(["instances": [JSONValue(0), JSONValue(1)]]);
     assertThrown!InvalidCommand(updateInstance(rec, Instance(Skip.Skip)));
+}
+
+/** Update the provided record with the specified value.
+
+    Throws:
+
+    [std.json.JSONException] if the record does not contain a compatible
+    "actual" object.
+*/
+pragma(inline)
+pure
+JSONValue updateActual(JSONValue record, in Actual newValue) {
+    return newValue.match!(
+        (TimeOfDay t) => JSONValue(["actual": t.toISOExtString()]),
+        (bool b) => JSONValue(["actual": b]),
+        (int i) => {
+            auto oldValue = record["actual"].get!long();
+            return JSONValue(["actual": i + oldValue]);
+        }()
+    );
 }
 
 enum Symbol { Brace, Colon }
