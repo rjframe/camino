@@ -111,6 +111,7 @@ struct Record(FILE = File) {
             this.file.write(line);
             this.file.truncate(this.file_pos + line.length);
             this.file.writeln();
+            this.file.seek(current_pos);
         } else {
             assert(0, "not implemented");
         }
