@@ -127,21 +127,11 @@ It isn't ready yet!
 Pull requests are welcome. For major features or breaking changes, please open
 an issue first so we can discuss what you would like to do.
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for pointers on getting set up. If you'd
+like guidance on anything feel free to ask in a discussion or ticket, or submit
+a draft PR.
+
 And don't forget the tests!
-
-You can find generated documentation
-[here](https://rjframe.github.io/camino/index.html) (it is missing private
-members, and links to standard library functions are currently dead).  You can
-generate the documentation locally with
-[adrdox](https://github.com/adamdruppe/adrdox). Documentation syntax is
-available with
-[adrdox's documentation](http://dpldocs.info/experimental-docs/adrdox.syntax.html).
-
-For now, the only hard rule in code style is 80 characters per line, with the
-possible exception of long strings in unit tests. I personally think that
-community rules and guidelines should be made by the community, which by
-definition requires the presence of more than one person. If you'd like guidance
-on anything feel free to ask in a discussion or ticket, or submit a draft PR.
 
 
 ### Acknowledgments
