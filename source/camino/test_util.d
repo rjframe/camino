@@ -91,8 +91,14 @@ struct FakeFile {
         foreach (arg; args) {
             // TODO: We should handle any non-range argument; not only chars.
             static if (is(typeof(arg) == char)) {
-                this.data.text[this.data.pos] = arg;
-                this.data.pos += 1;
+                if (this.data.text.length == this.data.pos) {
+                    // We're at the end of the string so we append.
+                    this.data.text ~= arg;
+                    this.data.pos += 1;
+                } else {
+                    this.data.text[this.data.pos] = arg;
+                    this.data.pos += 1;
+                }
             } else {
                 import std.algorithm : min;
                 import std.array : replaceInPlace;
@@ -109,8 +115,11 @@ struct FakeFile {
         trailing newline.
     */
     void writeln(S...)(S args) {
-        foreach (const(char[]) arg; args) {
-            this.data.write(arg, '\n');
+        if (args.length == 0) this.write('\n');
+        else {
+            foreach (const(char[]) arg; args) {
+                this.write(arg, '\n');
+            }
         }
     }
 
@@ -215,7 +224,7 @@ unittest {
 
     file.write("5");
     assert(file.readText() == "52\n34\n", file.readText());
-    file.write("67", "89", "0", "\n");
+    file.write("67", "89", "0", '\n');
     assert(file.readText() == "567890\n", file.readText());
 }
 
