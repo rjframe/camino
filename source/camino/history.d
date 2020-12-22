@@ -333,13 +333,24 @@ private:
 
 /** Truncate a file to the specified size in bytes.
 
-    The current file position after a truncate call is undefined; if you need to
-    keep your position within the file, call [File.tell] prior to truncating.
+    On Windows the file must be opened for writing.
+
+    The current file position after a `truncate()` call is undefined; if you
+    need to keep your position within the file, call [File.tell] prior to
+    truncating, then seek after truncation.
+
+    Note that truncating a text file may mean there is no longer a newline at
+    the end of the file.
 
     Throws:
 
     [std.stdio.FileException] on failure to truncate the file.
-    TODO Doc for Windows: seek can throw Exception, ErrnoException.
+
+    On Windows, `truncate()` can also throw:
+
+    * [Exception] if the file is unopened.
+    * [std.exception.ErrnoException|ErrnoException] if the OS fails to seek to
+      the position at the specified `size`.
 */
 void truncate(File file, long size) {
     import std.file : FileException;
