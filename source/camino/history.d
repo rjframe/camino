@@ -203,7 +203,7 @@ void update(FILE = File)(
     // We need to have a complete record, and requiring that it exist prior to
     // updating makes that simpler for us here.
 
-    auto newRecord = update.match!(
+    const newRecord = update.match!(
         (Task t) => JSONValue(t == Task.Complete),
         (Actual a) =>
             updateActual(record[date.toISOExtString()][habit.description], a),
@@ -448,7 +448,7 @@ void truncate(File file, long size) {
         import core.stdc.errno : errno;
         import core.sys.posix.unistd: ftruncate;
 
-        auto result = ftruncate(file.fileno(), size) == 0
+        const result = ftruncate(file.fileno(), size) == 0
             ? 0
             : errno();
     }
@@ -458,7 +458,7 @@ void truncate(File file, long size) {
         import core.sys.windows.windows: SetEndOfFile, GetLastError;
 
         file.seek(size);
-        auto result = SetEndOfFile(file.windowsHandle())
+        const result = SetEndOfFile(file.windowsHandle())
             ? 0
             : GetLastError();
     }
