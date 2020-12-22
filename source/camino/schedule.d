@@ -180,7 +180,7 @@ private:
 /** Convert the provided string to a [DayOfWeek] enumerated value.
 
     Any unique day abbreviations are allowed; for example, "Sun" will match
-    Sunday, but "S" will be an error because it could match Sunday or Monday.
+    Sunday, but "S" will be an error because it could match Sunday or Saturday.
 
     Matches are case-insensitive.
 
