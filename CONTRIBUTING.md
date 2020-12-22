@@ -94,7 +94,7 @@ your first use of it:
 
 ```
 # Use one of:
-dscanner --S
+dscanner -S
 dub lint --style-check
 ```
 
@@ -127,9 +127,9 @@ A commit message might look something like:
 ```
 Add a widget to the box.
 
-The box was looking pretty empty with nothing inside it.
+The box was looking empty with nothing inside it.
 
-We could also have used a gadget, but widgets are shinier which should
+We could also have used a gadget, but widgets are shiny which should
 make looking inside the box a more pleasant experience going forward.
 
 This does mean we will no longer be able to fit some things inside the
@@ -159,7 +159,7 @@ particular:
   conventions](https://dlang.org/dstyle.html#naming_conventions); notably:
     * Module names are all `lowercase`.
     * Classes, interfaces, structs, and enums are `PascalCased`.
-    * Functions, variables, constants, enum members, and UDAs are 'camelCased`.
+    * Functions, variables, constants, enum members, and UDAs are `camelCased`.
     * Names that conflict with keywords should be postfixed with an underscore.
     * All letters in an acronym should use the same case (the same as the first
       character according to the other rules).
@@ -170,7 +170,7 @@ particular:
 
 #### Additions or exceptions to the D style
 
-* Use an 80 character line limit length.
+* Use an 80 character line length limit.
 * Write code with understandability and future maintainability in mind.
 * Write tests whenever practical; exercise error conditions and edge cases as
   well as the happy path.
@@ -207,7 +207,7 @@ void myFunction() {
 }
 
 void otherFunction(
-    int longListOfVariables,
+    int parameterList,
     int thatWouldExtendBeyond,
     int eightyCharacters
 ) {
@@ -241,7 +241,7 @@ Example:
 ```d
 /** Truncate a file to the specified size in bytes.
 
-    The file must be opened for writing.
+    On Windows the file must be opened for writing.
 
     The current file position after a `truncate()` call is undefined; if you
     need to keep your position within the file, call [File.tell] prior to
