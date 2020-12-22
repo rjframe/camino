@@ -34,6 +34,7 @@ struct Goal {
     /** An optional unit to describe the the goal's [Goal.value|value]. */
     string unit = "";
 
+    /** Create a new Goal. */
     pure
     this(Ordering ordering, GoalValue value, string unit = "") {
         this.ordering = ordering;
@@ -41,6 +42,7 @@ struct Goal {
         this.unit = unit;
     }
 
+    /** Create a new Goal with an [Ordering] of '='. */
     pure
     this(GoalValue value, string unit = "") {
         this.ordering = Ordering.Equal;
