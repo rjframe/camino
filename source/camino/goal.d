@@ -34,6 +34,20 @@ struct Goal {
     /** An optional unit to describe the the goal's [Goal.value|value]. */
     string unit = "";
 
+    pure
+    this(Ordering ordering, GoalValue value, string unit = "") {
+        this.ordering = ordering;
+        this.value = value;
+        this.unit = unit;
+    }
+
+    pure
+    this(GoalValue value, string unit = "") {
+        this.ordering = Ordering.Equal;
+        this.value = value;
+        this.unit = unit;
+    }
+
     /** Serialize this goal to a [std.json.JSONValue]. */
     pure nothrow
     const(JSONValue) toJSONValue() const {
