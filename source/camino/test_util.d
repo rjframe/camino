@@ -37,18 +37,28 @@ struct FakeFile {
     /** Create a new [FakeFile].
 
         Params:
-            text = The text of the "file" for callers to work with.
+            text = The text of the "file" for callers to work with. If the
+            string does not end with a new line, one will be added.
     */
     pure
-    this(string text) { this.text = text.dup; }
+    this(string text) {
+        this.data = new FileData(text);
+    }
 
-    // TODO: Copy constructor that shares the underlying text, file position.
-    //this(ref return scope A rhs) { }
+    /** Copy constructor.
+
+        The new [FakeFile] will share the underlying file with the source
+        object.
+    */
+    pure nothrow
+    this(FakeFile other) {
+        this.data = other.data;
+    }
 
     /** Return a range to read the file line by line. */
     pure
     auto byLine() const {
-        return FakeFileByLineRange(this.text.dup);
+        return FakeFileByLineRange(this.data.text.dup);
     }
 
     /** Read a line from the file into the provided buffer.
@@ -63,11 +73,11 @@ struct FakeFile {
     size_t readln(C, R = dchar)(ref C[] buf, R terminator = '\n') {
         import std.algorithm : countUntil;
 
-        auto len = this.text[this.pos..$].countUntil(terminator) + 1;
-        assert(len <= this.text.length - this.pos);
+        auto len = this.data.text[this.data.pos..$].countUntil(terminator) + 1;
+        assert(len <= this.data.text.length - this.data.pos);
 
-        buf = cast(C[]) this.text[this.pos..this.pos + len];
-        this.pos += len;
+        buf = cast(C[]) this.data.text[this.data.pos..this.data.pos + len];
+        this.data.pos += len;
 
         return len;
     }
@@ -81,16 +91,16 @@ struct FakeFile {
         foreach (arg; args) {
             // TODO: We should handle any non-range argument; not only chars.
             static if (is(typeof(arg) == char)) {
-                this.text[this.pos] = arg;
-                this.pos += 1;
+                this.data.text[this.data.pos] = arg;
+                this.data.pos += 1;
             } else {
                 import std.algorithm : min;
                 import std.array : replaceInPlace;
 
-                const end_idx = min(this.pos + arg.length, text.length);
-                this.text.replaceInPlace(this.pos, end_idx, arg);
+                const end_idx = min(this.data.pos + arg.length, this.data.text.length);
+                this.data.text.replaceInPlace(this.data.pos, end_idx, arg);
 
-                this.pos += arg.length;
+                this.data.pos += arg.length;
             }
         }
     }
@@ -100,21 +110,21 @@ struct FakeFile {
     */
     void writeln(S...)(S args) {
         foreach (const(char[]) arg; args) {
-            this.write(arg, '\n');
+            this.data.write(arg, '\n');
         }
     }
 
     /** Set the FakeFile's file position. */
     @trusted
     void seek(long offset) {
-        this.pos = offset;
+        this.data.pos = offset;
     }
 
     /** Get the FakeFile's current file position. */
     @property
     @trusted
     ulong tell() const {
-        return this.pos;
+        return this.data.pos;
     }
 
     /** No-op. For API compatibility. */
@@ -163,7 +173,7 @@ struct FakeFile {
         ---
     */
     void truncate(long size) {
-        this.text = this.text[0..size];
+        this.data.text = this.data.text[0..size];
     }
 
     /** Get the full text of the file.
@@ -173,13 +183,29 @@ struct FakeFile {
      */
     @property
     const(char[]) readText() {
-        return this.text;
+        return this.data.text;
     }
 
     private:
 
-    char[] text;
-    ulong pos = 0;
+    /** Pointer to file data, making sharing the underlying file among copies of
+        [FakeFile] easy.
+    */
+    FileData data;
+
+    class FileData {
+        char[] text;
+        ulong pos = 0;
+
+        pure
+        this(const(char[]) text) {
+            this.text = text.dup;
+
+            if (this.text[$-1] != '\n') {
+                this.text ~= "\n";
+            }
+        }
+    }
 }
 
 @("FakeFile writes text to file")
@@ -188,9 +214,9 @@ unittest {
     auto file = FakeFile(text);
 
     file.write("5");
-    assert(file.text == "52\n34", file.text);
-    file.write("67", "89", "0");
-    assert(file.text == "567890", file.text);
+    assert(file.readText() == "52\n34\n", file.readText());
+    file.write("67", "89", "0", "\n");
+    assert(file.readText() == "567890\n", file.readText());
 }
 
 @("FakeFile readln with buffer")
