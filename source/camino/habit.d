@@ -1,12 +1,48 @@
+/** Contains code related to working with the habits recorded in a habits file.
+*/
 module camino.habit;
 
 import camino.goal;
 import camino.schedule;
 
 import std.exception : enforce;
+import std.stdio : File;
 
 import sumtype;
 
+
+/** Read all habits from the specified file. */
+Habit[] readHabits(FILE = File)(FILE file) {
+    import std.algorithm : splitter;
+    import std.stdio : File;
+    import std.string : entab, strip;
+
+    Habit[] habits;
+    char[] buf;
+
+    while (file.readln(buf)) {
+        if (buf[0] == '#' || buf[0] == '\n') continue;
+        string[] fields;
+        fields.reserve(3);
+
+        foreach (field; buf.entab(4).splitter('\t')) {
+            if (field == "") continue;
+            fields ~= field.strip().dup();
+        }
+
+        if (fields.length == 2) {
+            habits ~= Habit(fields[0], fields[1]);
+        } else if (fields.length == 3) {
+            habits ~= Habit(fields[0], fields[1], fields[2]);
+        } else {
+            throw new Exception(
+                "Invalid number of fields in habits file:\n\t" ~ cast(string)buf
+            );
+        }
+    }
+
+    return habits;
+}
 
 @safe:
 
