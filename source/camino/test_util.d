@@ -245,7 +245,13 @@ private struct FakeFileByLineRange {
 
     this(string text) {
         import std.string : split;
-        this.text = text.split('\n');
+
+        // We don't want to return the trailing newline in front().
+        if (text[$-1] == '\n') {
+            this.text = text[0..$-1].split('\n');
+        } else {
+            this.text = text.split('\n');
+        }
     }
 
     @nogc
