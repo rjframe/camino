@@ -21,4 +21,3 @@ jobs:
 
             - name: Run tests
               run: dub -q test
-              continue-on-error: true
