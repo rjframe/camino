@@ -1,10 +1,10 @@
 ---
-name: Run Unit Tests - Stable Compilers
+name: CI - Run Unit Tests - Stable Compilers
 on: [push, pull_request]
 
 jobs:
     test-stable:
-        name: Run Tests - Stable Compilers
+        name: Run Tests
         strategy:
             matrix:
                 os: [ubuntu-16.04, macOS-latest, windows-latest]
@@ -13,7 +13,7 @@ jobs:
                     # dmd-2.093.1 -> compiler does not find linker.
                     ldc-latest
                     # ldc-1.23.0 -> won't link unit-threaded in.
-                    #ldc-1.22.0 -> compiler error.
+                    # ldc-1.22.0 -> compiler error.
                 ]
 
         runs-on: ${{ matrix.os }}
@@ -27,23 +27,3 @@ jobs:
 
             - name: Run tests
               run: dub -q test
-
-#    test-future:
-#        name: Run Tests - Unstable Compilers
-#        needs: [test-stable]
-#        strategy:
-#            matrix:
-#                os: [ubuntu-latest, windows-latest, macOS-latest]
-#                dc: [dmd-master, dmd-beta, ldc-master, ldc-beta]
-#
-#        runs-on: ${{ matrix.os }}
-#        steps:
-#            - uses: actions/checkout@v2
-#
-#            - name: Install D compiler
-#              uses: dlang-community/setup-dlang@v1
-#              with:
-#                  compiler: ${{ matrix.dc }}
-#
-#            - name: Run tests
-#              run: dub -q test
