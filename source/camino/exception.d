@@ -30,7 +30,7 @@ class InvalidJSON : Exception {
     }
 
     /** Output the exception's message to the provided sink. */
-    override void toString (scope void delegate(scope const char[]) sink) const
+    override void toString(scope void delegate(in char[]) sink) const
     {
         sink(this.msg);
         if (parsedLine.length > 0) {
@@ -65,7 +65,7 @@ class InvalidGoal : Exception {
     }
 
     /** Output the exception's message to the provided sink. */
-    override void toString (scope void delegate(scope const char[]) sink) const
+    override void toString (scope void delegate(in char[]) sink) const
     {
         sink(this.msg);
         if (goalString.length > 0) {
@@ -102,7 +102,7 @@ class InvalidSchedule : Exception {
     }
 
     /** Output the exception's message to the provided sink. */
-    override void toString (scope void delegate(scope const char[]) sink) const
+    override void toString (scope void delegate(in char[]) sink) const
     {
         sink(this.msg);
         if (scheduleString.length > 0) {
@@ -143,7 +143,7 @@ class InvalidRecord : Exception {
     }
 
     /** Output the exception's message to the provided sink. */
-    override void toString (scope void delegate(scope const char[]) sink) const
+    override void toString (scope void delegate(in char[]) sink) const
     {
         sink(this.msg);
         if (this.record != this.record.init) {
