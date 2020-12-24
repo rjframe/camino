@@ -34,7 +34,8 @@ jobs:
         strategy:
             matrix:
                 os: [ubuntu-latest, windows-latest, macOS-latest]
-                dc: [dmd-master, dmd-beta, ldc-master, ldc-beta]
+                #dc: [dmd-master, dmd-beta, ldc-master, ldc-beta]
+                dc: [dmd-beta, ldc-master, ldc-beta]
 
         runs-on: ${{ matrix.os }}
         steps:
