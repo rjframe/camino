@@ -52,7 +52,7 @@ struct Goal {
 
     /** Serialize this goal to a [std.json.JSONValue]. */
     pure nothrow
-    const(JSONValue) toJSONValue() const {
+    JSONValue toJSONValue() const {
         import std.conv : text, to;
         import std.string : isNumeric;
 
