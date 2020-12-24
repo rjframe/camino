@@ -55,6 +55,8 @@ struct FakeFile {
         this.data = other.data;
     }
 
+    bool isOpen() { return this.data.isOpen; }
+
     /** Return a range to read the file line by line. */
     pure
     auto byLine() const {
@@ -136,6 +138,11 @@ struct FakeFile {
         return this.data.pos;
     }
 
+    /** Get the size of the file in bytes. */
+    @property
+    @safe
+    ulong size() { return this.data.text.length; }
+
     /** No-op. For API compatibility. */
     void lock(
         LockType lockType = LockType.readWrite,
@@ -205,12 +212,15 @@ struct FakeFile {
     class FileData {
         char[] text;
         ulong pos = 0;
+        bool isOpen = true;
 
         pure
         this(const(char[]) text) {
             this.text = text.dup;
 
-            if (this.text[$-1] != '\n') {
+            if (text.length == 0) {
+                this.text = ['\n'];
+            } else if (this.text[$-1] != '\n') {
                 this.text ~= "\n";
             }
         }
