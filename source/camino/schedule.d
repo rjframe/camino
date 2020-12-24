@@ -61,7 +61,8 @@ alias Schedule = SumType!(Repeat, SpecialRepeat);
 
     Throws:
 
-    [InvalidSchedule] if unable to parse the schedule string.
+    [InvalidSchedule] if unable to parse the schedule string or if the number of
+    a habit's daily occurences is 0.
 */
 pure
 const(Schedule) parseSchedule(string schedule)
@@ -93,6 +94,9 @@ const(Schedule) parseSchedule(string schedule)
                 schedule
             );
         }
+        enforce(number > 0,
+            new InvalidSchedule("Cannot have a repetition period of 0.",
+                schedule));
 
         if (repeatType.isRepeatInterval()) {
             return Schedule(SpecialRepeat(
