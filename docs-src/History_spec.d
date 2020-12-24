@@ -80,8 +80,9 @@ specification.
 Each record (top-level object) will have two keys: a date and a version
 specifier.
 
-The first key in the record must be a date in the format "YYYY-MM-DD". The value
-of this key will be the habit instance data within a JSON object.
+The first key in the record must be a date in the format "YYYY-MM-DD". This key
+must be unique within the entire JSONL file. The value of this object will be
+the habit instance data within a JSON object.
 
 The second key/value pair will be `"v": "1.0.0"`.
 
@@ -114,7 +115,7 @@ $(LIST
  )
 
 The habit object must also contain one and only one of an `instances` or
-`actual` key.
+`actual` key. `goal` and `actual`/`instance` keys may be present in any order.
 
 An `instances` key's value is an array of either integers or boolean values. The
 array may contain `null` or the string "skip" with either array type.
