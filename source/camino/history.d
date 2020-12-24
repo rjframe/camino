@@ -9,7 +9,7 @@ import std.typecons : Tuple;
 
 import camino.exception;
 import camino.goal : Actual = GoalValue;
-import camino.habit;
+import camino.habit : Habit;
 
 import sumtype;
 
