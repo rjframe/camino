@@ -172,6 +172,183 @@ unittest {
     assert(reader.empty());
 }
 
+/** Append an empty record for the given habits to the end of the file for the
+    specified date.
+
+    Params:
+        file =   A history file open for writing.
+        date =   The date for which to create the record. It is the caller's
+                 responsibility to ensure that the date given is unique within
+                 the file.
+        habits = The list of [Habit]s that will comprise the record.
+
+    Throws:
+
+    [Exception] or [std.exception.ErrnoException] on failure to write to the
+    file.
+*/
+void appendEmptyRecord(FILE = File)(
+    FILE file,
+    in Date date,
+    const Habit[] habits
+)
+    in(file.isOpen())
+{
+    const record = habits.toJSONRecord(date);
+    const file_pos = file.tell();
+
+    scope(exit) {
+        file.seek(file_pos);
+    }
+
+    file.seek(file.size);
+    file.writeln(record);
+}
+
+@("appendEmptyRecord writes the date object first")
+unittest {
+    import camino.schedule : Repeat, Schedule;
+    import camino.goal : Goal, GoalValue;
+    import camino.test_util : FakeFile;
+    import std.algorithm : startsWith;
+
+    auto file = FakeFile("");
+
+    const habits = [
+        Habit(
+            Schedule(Repeat.Daily),
+            "Habit 1",
+            Goal(GoalValue(true))
+        )
+    ];
+
+    appendEmptyRecord(file, Date(2020, 1, 1), habits);
+
+    assert(file.readText()[1..$].startsWith(`{"2020-01-01"`), file.readText());
+}
+
+@("appendEmptyRecord creates an empty history record from Habits")
+unittest {
+    import camino.schedule : Repeat, SpecialRepeat, Schedule;
+    import camino.goal : Goal, GoalValue;
+    import camino.test_util : FakeFile;
+    import std.json : parseJSON;
+
+    auto file = FakeFile("");
+
+    SpecialRepeat habitThreeRepeat = {
+        interval: Repeat.Daily,
+        numberOfIntervals: 1,
+        numberPerInstance: 2,
+        negative: false
+    };
+
+    const habits = [
+        Habit(
+            Schedule(Repeat.Daily),
+            "Habit 1",
+            Goal(GoalValue(true))
+        ),
+        Habit(
+            Schedule(Repeat.Daily),
+            "Habit 2",
+            Goal(GoalValue(50))
+        ),
+        Habit(
+            Schedule(habitThreeRepeat),
+            "Habit 3",
+            Goal(GoalValue(50))
+        ),
+    ];
+
+    appendEmptyRecord(file, Date(2020, 1, 1), habits);
+
+    assert(file.readText().parseJSON() ==
+        parseJSON(
+            `{"2020-01-01":{"Habit 1":{"actual":false,"goal":true},`
+            ~ `"Habit 2":{"actual":0,"goal":50},`
+            ~ `"Habit 3":{"goal":50,"instances":[null,null]}},`
+            ~ `"version":"1.0.0"}`
+        )
+    );
+}
+
+@("appendEmptyRecord appends to the end of the history file")
+unittest {
+    import camino.schedule : Repeat, SpecialRepeat, Schedule;
+    import camino.goal : Goal, GoalValue, Ordering;
+    import camino.test_util : FakeFile;
+    import std.json : parseJSON;
+
+    auto file = FakeFile(
+        `{"2020-01-01":{"Habit 1":{"actual":false,"goal":true},`
+        ~ `"Habit 2":{"actual":0,"goal":50},`
+        ~ `"Habit 3":{"goal":50,"instances":[null,null]}}},`
+        ~ `"Habit 4":{"goal":">50","instances":[null,null]}},`
+        ~ `"version":"1.0.0"}`
+    );
+
+    SpecialRepeat habitFourRepeat = {
+        interval: Repeat.Daily,
+        numberOfIntervals: 1,
+        numberPerInstance: 4,
+        negative: false
+    };
+
+    const habits = [
+        Habit(
+            Schedule(Repeat.Daily),
+            "Habit 1",
+            Goal(GoalValue(true))
+        ),
+        Habit(
+            Schedule(Repeat.Daily),
+            "Habit 2",
+            Goal(GoalValue(20))
+        ),
+        Habit(
+            Schedule(habitFourRepeat),
+            "Habit 3",
+            Goal(GoalValue(50))
+        ),
+        Habit(
+            Schedule(habitFourRepeat),
+            "Habit 4",
+            Goal(Ordering.GreaterThan, GoalValue(50))
+        ),
+    ];
+
+    appendEmptyRecord(file, Date(2020, 1, 2), habits);
+
+    char[] buf;
+
+    // Read the previously-existing line.
+    file.readln(buf);
+    assert(buf.parseJSON() ==
+        parseJSON(
+            `{"2020-01-01":{"Habit 1":{"actual":false,"goal":true},`
+            ~ `"Habit 2":{"actual":0,"goal":50},`
+            ~ `"Habit 3":{"goal":50,"instances":[null,null]}}},`
+            ~ `"Habit 4":{"goal":">50","instances":[null,null]}},`
+            ~ `"version":"1.0.0"}`
+        )
+    );
+
+    // Now read our added line.
+    file.readln(buf);
+
+    assert(buf.parseJSON() ==
+        parseJSON(
+            `{"2020-01-02":{"Habit 1":{"actual":false,"goal":true},`
+            ~ `"Habit 2":{"actual":0,"goal":20},`
+            ~ `"Habit 3":{"goal":50,"instances":[null,null,null,null]},`
+            ~ `"Habit 4":{"goal":">50","instances":[null,null,null,null]}},`
+            ~ `"version":"1.0.0"}`
+        ),
+        buf
+    );
+}
+
 /** Update the specified `Habit` for the given date.
 
     Params:
@@ -594,7 +771,10 @@ unittest {
     assertThrown!InvalidCommand(updateInstance(rec, Instance(Skip.Skip)));
 }
 
-/** Update the provided record with the specified value.
+/** Update the provided record.
+
+    An integral value will be added to the current value. [TimeOfDay] or or
+    boolean values replace whatever may be present.
 
     Throws:
 
@@ -607,12 +787,82 @@ JSONValue updateActual(JSONValue record, in Actual newValue) {
     return newValue.match!(
         (TimeOfDay t) => JSONValue(["actual": t.toISOExtString()]),
         (bool b) => JSONValue(["actual": b]),
-        (int i) => {
-            auto oldValue = record["actual"].get!long();
-            return JSONValue(["actual": i + oldValue]);
-        }()
+        (int i) => JSONValue(["actual": i + record["actual"].get!long()])
     );
 }
+
+/** Build and return the JSON string from the provided habits for the specified
+    date.
+*/
+nothrow
+string toJSONRecord(const Habit[] habits, in Date date) {
+    import camino.schedule : Repeat, SpecialRepeat;
+    import std.json : JSONType;
+
+    scope(failure) {
+        // Any exception we could get in this function will be due to either
+        // failure to properly validate a [Habit] on creation or a programming
+        // error interpreting a Habit in this function.
+        assert(0, "Habit object is invalid.");
+    }
+
+    const key = date.toISOExtString();
+    auto value = JSONValue([key: null]);
+
+    foreach (habit; habits) {
+        auto rec = habit.goal.toJSONValue();
+
+        const numberOfInstances = habit.schedule.match!(
+            (Repeat r) => 1,
+            (SpecialRepeat r) => r.numberPerInstance
+        );
+        assert(numberOfInstances > 0);
+
+        switch (rec["goal"].type) {
+            case JSONType.true_:
+            case JSONType.false_:
+                rec["actual"] = false;
+                break;
+            case JSONType.string:
+                if (numberOfInstances == 1) {
+                    rec["actual"] = null;
+                } else {
+                    rec["instances"] = JSONValue([null]);
+                    for (int i = 0; i < numberOfInstances - 1; ++i) {
+                        // TODO: Why can I not append JSONValue(null)? Throws
+                        // JSONException "not an array".
+                        rec["instances"] ~= JSONValue([null]);
+                    }
+                }
+                break;
+            case JSONType.integer:
+            case JSONType.uinteger:
+                if (numberOfInstances == 1) {
+                    rec["actual"] = 0;
+                } else {
+                    rec["instances"] = JSONValue([null]);
+                    for (int i = 0; i < numberOfInstances - 1; ++i) {
+                        // TODO: Why can I not append JSONValue(null)? Throws
+                        // JSONException "not an array".
+                        rec["instances"] ~= JSONValue([null]);
+                    }
+                }
+                break;
+            default:
+                assert(0, "Invalid goal.");
+        }
+
+        value[key][habit.description] = rec;
+    }
+
+    // We cannot guarantee that version comes after the date with a JSONValue,
+    // so we'll convert it to string then add it.
+    return {
+        auto json = value.toString();
+        return json[0..$-1] ~ `,"version":"1.0.0"}`;
+    }();
+}
+
 
 enum Symbol { Brace, Colon }
 alias Token = SumType!(Symbol, string);
