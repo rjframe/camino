@@ -270,7 +270,7 @@ unittest {
         )
     ];
 
-    appendEmptyRecord(file, Date(2020, 1, 1), habits);
+    const _ = appendEmptyRecord(file, Date(2020, 1, 1), habits);
 
     assert(file.readText()[1..$].startsWith(`{"2020-01-01"`), file.readText());
 }
@@ -309,7 +309,7 @@ unittest {
         ),
     ];
 
-    appendEmptyRecord(file, Date(2020, 1, 1), habits);
+    const _ = appendEmptyRecord(file, Date(2020, 1, 1), habits);
 
     assert(file.readText().parseJSON() ==
         parseJSON(
@@ -366,7 +366,7 @@ unittest {
         ),
     ];
 
-    appendEmptyRecord(file, Date(2020, 1, 2), habits);
+    const _ = appendEmptyRecord(file, Date(2020, 1, 2), habits);
 
     char[] buf;
 
