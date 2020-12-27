@@ -374,8 +374,7 @@ unittest {
 /** Update the specified `Habit` for the given date.
 
     Params:
-        history = An opened file from which to read records.
-        date    = the date to update.
+        record  = The [Record] to modify.
         habit   = The habit whose status to update.
         update  = The action to record.
 
@@ -391,26 +390,28 @@ unittest {
 */
 // TODO: Should I replace JSONException with InvalidRecord or InvalidCommand?
 void update(FILE = File)(
-    FILE history,
-    in Date date,
+    Record!FILE record,
     in Habit habit,
     in Update update
 ) {
-    auto record = readRecord(history, date);
-
     // TODO: Throw exception if the record does not already include the habit?
-    // We need to have a complete record, and requiring that it exist prior to
-    // updating makes that simpler for us here.
+    // Or (always) call refreshRecord (not yet implemented)?
+
+    const date = {
+        foreach (string k, _; record.record()) {
+            // We'll only have one object.
+            return k;
+        }
+        throw new InvalidRecord("Record has no date key.");
+    }();
 
     const newRecord = update.match!(
         (Task t) => JSONValue(t == Task.Complete),
-        (Actual a) =>
-            updateActual(record[date.toISOExtString()][habit.description], a),
-        (Instance i) =>
-            updateInstance(record[date.toISOExtString()][habit.description], i)
+        (Actual a) => updateActual(record[date][habit.description], a),
+        (Instance i) => updateInstance(record[date][habit.description], i)
     );
 
-    record[date.toISOExtString()][habit.description] = newRecord;
+    record[date][habit.description] = newRecord;
     record.writeToFile();
 }
 
@@ -420,7 +421,11 @@ unittest {
     import camino.schedule : Repeat, Schedule;
     import camino.test_util : FakeFile;
 
-    auto file = FakeFile(`{"2020-01-01":{"Habit":false}}`);
+    auto record = Record!FakeFile(
+        FakeFile(`{"2020-01-01":{"Habit":false}}`),
+        `{"2020-01-01":{"Habit":false}}`,
+        0
+    );
 
     const habit = Habit(
         Schedule(Repeat.Daily),
@@ -429,14 +434,13 @@ unittest {
     );
 
     update(
-        file,
-        Date(2020, 1, 1),
+        record,
         habit,
         Update(Task.Complete)
     );
 
-    assert(file.readText() == `{"2020-01-01":{"Habit":true}}` ~ '\n',
-        file.readText());
+    assert(record.file.readText() == `{"2020-01-01":{"Habit":true}}` ~ '\n',
+        record.file.readText());
 }
 
 @("update can update an Actual record")
@@ -445,7 +449,11 @@ unittest {
     import camino.schedule : Repeat, Schedule;
     import camino.test_util : FakeFile;
 
-    auto file = FakeFile(`{"2020-01-01":{"Habit":{"actual":10}}}`);
+    auto record = Record!FakeFile(
+        FakeFile(`{"2020-01-01":{"Habit":{"actual":10}}}`),
+        `{"2020-01-01":{"Habit":{"actual":10}}}`,
+        0
+    );
 
     const habit = Habit(
         Schedule(Repeat.Daily),
@@ -454,14 +462,16 @@ unittest {
     );
 
     update(
-        file,
-        Date(2020, 1, 1),
+        record,
         habit,
         Update(Actual(20))
     );
 
-    assert(file.readText() == `{"2020-01-01":{"Habit":{"actual":30}}}` ~ '\n',
-        file.readText());
+    assert(
+        record.file.readText() ==
+            `{"2020-01-01":{"Habit":{"actual":30}}}` ~ '\n',
+        record.file.readText()
+    );
 }
 
 @("update can update an Instance record")
@@ -470,7 +480,11 @@ unittest {
     import camino.schedule : Repeat, SpecialRepeat, Schedule;
     import camino.test_util : FakeFile;
 
-    auto file = FakeFile(`{"2020-01-01":{"Habit":{"instances":[1, null]}}}`);
+    auto record = Record!FakeFile(
+        FakeFile(`{"2020-01-01":{"Habit":{"instances":[1, null]}}}`),
+        `{"2020-01-01":{"Habit":{"instances":[1, null]}}}`,
+        0
+    );
 
     SpecialRepeat repeat = {
         interval: Repeat.Daily,
@@ -486,16 +500,15 @@ unittest {
     );
 
     update(
-        file,
-        Date(2020, 1, 1),
+        record,
         habit,
         Update(Instance(20))
     );
 
     assert(
-        file.readText() ==
+        record.file.readText() ==
             `{"2020-01-01":{"Habit":{"instances":[1,20]}}}` ~ '\n',
-        file.readText()
+        record.file.readText()
     );
 }
 
