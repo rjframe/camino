@@ -329,7 +329,7 @@ unittest {
     auto file = FakeFile(
         `{"2020-01-01":{"Habit 1":{"actual":false,"goal":true},`
         ~ `"Habit 2":{"actual":0,"goal":50},`
-        ~ `"Habit 3":{"goal":50,"instances":[null,null]}}},`
+        ~ `"Habit 3":{"goal":50,"instances":[null,null]},`
         ~ `"Habit 4":{"goal":">50","instances":[null,null]}},`
         ~ `"version":"1.0.0"}`
     );
@@ -374,7 +374,7 @@ unittest {
         parseJSON(
             `{"2020-01-01":{"Habit 1":{"actual":false,"goal":true},`
             ~ `"Habit 2":{"actual":0,"goal":50},`
-            ~ `"Habit 3":{"goal":50,"instances":[null,null]}}},`
+            ~ `"Habit 3":{"goal":50,"instances":[null,null]},`
             ~ `"Habit 4":{"goal":">50","instances":[null,null]}},`
             ~ `"version":"1.0.0"}`
         )
