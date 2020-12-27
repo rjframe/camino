@@ -49,6 +49,20 @@ struct Record(FILE = File) {
         this.file_pos = file_pos;
     }
 
+    /** Create a new [Record] of the specified JSON object and the file position
+        from which that object was read.
+
+        It is the caller's responsibility to validate that the [JSONValue]
+        represents a valid record.
+    */
+    this(ref FILE history, const(char[]) record, size_t file_pos) {
+        import std.json : parseJSON;
+
+        this.file = history;
+        this.rec = parseJSON(record);
+        this.file_pos = file_pos;
+    }
+
     /** Retrieve the index into the source file from which the record was read.
     */
     pure nothrow @nogc
