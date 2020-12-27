@@ -7,6 +7,11 @@ int main(string[] args) {
     import camino.habit : readHabits;
     import camino.optparse;
 
+    if (args.length < 2) {
+        writeln(helpText);
+        return ReturnCode.BadCommand;
+    }
+
     switch (args[1]) {
         case "do":
             break;
