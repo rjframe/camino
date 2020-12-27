@@ -69,12 +69,14 @@ struct Record(FILE = File) {
     @property
     size_t pos() const { return this.file_pos; }
 
+    pure nothrow @nogc
+    @property
+    Date getDate() { return this._date; }
+
     /** Retrieve the date key for this record as a string. */
     pure nothrow
     @property
-    string dateString() {
-        return this._date.toISOExtString();
-    }
+    string getDateString() { return this._date.toISOExtString(); }
 
     /** Provides access to the underlying [JSONValue] record.
 
