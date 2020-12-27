@@ -13,6 +13,7 @@ import camino.habit : Habit;
 
 import sumtype;
 
+
 /** Mark a task as complete or incomplete.
 
     Currently only Task.Complete is explicitly used.
@@ -30,8 +31,6 @@ alias Instance = SumType!(ulong, bool, Skip);
 
 /** Stores information concerning an individual record from the history file. */
 struct Record(FILE = File) {
-    // TODO: make readRecord, etc. methods of this?
-
     /** $(B $(I disabled)) */
     // TODO: File bug on adrdox -> $(NEVER_DOCUMENT) is ignored.
     @disable this();
@@ -42,25 +41,26 @@ struct Record(FILE = File) {
         It is the caller's responsibility to validate that the [JSONValue]
         represents a valid record.
     */
-    nothrow
     this(ref FILE history, JSONValue record, size_t file_pos) {
         this.file = history;
         this.rec = record;
         this.file_pos = file_pos;
+
+        foreach (string k, _; this.rec) {
+            if (k != "version")
+                this._date = Date.fromISOExtString(k);
+        }
     }
 
-    /** Create a new [Record] of the specified JSON object and the file position
-        from which that object was read.
+    /** Create a new [Record] of the specified JSON string and the file position
+        from which the JSON record was read.
 
-        It is the caller's responsibility to validate that the [JSONValue]
+        It is the caller's responsibility to validate that the `record`
         represents a valid record.
     */
     this(ref FILE history, const(char[]) record, size_t file_pos) {
         import std.json : parseJSON;
-
-        this.file = history;
-        this.rec = parseJSON(record);
-        this.file_pos = file_pos;
+        this(history, parseJSON(record), file_pos);
     }
 
     /** Retrieve the index into the source file from which the record was read.
@@ -68,6 +68,13 @@ struct Record(FILE = File) {
     pure nothrow @nogc
     @property
     size_t pos() const { return this.file_pos; }
+
+    /** Retrieve the date key for this record as a string. */
+    pure nothrow
+    @property
+    string dateString() {
+        return this._date.toISOExtString();
+    }
 
     /** Provides access to the underlying [JSONValue] record.
 
@@ -152,36 +159,53 @@ struct Record(FILE = File) {
 
     FILE file;
     JSONValue rec;
+    Date _date;
     ulong file_pos;
 }
 
 @("Record.atLastLine() determines whether we're at the file's final line")
 unittest {
     import camino.test_util : FakeFile;
+    import std.json : parseJSON;
 
-    auto file = FakeFile("Line 1\nLine 2\nLine 3\n");
+    const lineOne = `{"2020-01-01":{"Habit 1":true},"version":"1.0.0"}` ~ '\n';
+    const text = `{"2020-01-01":{"Habit 1":true},"version":"1.0.0"}` ~ '\n'
+        ~ `{"2020-01-02":{"Habit 1":true},"version":"1.0.0"}` ~ '\n'
+        ~ `{"2020-01-03":{"Habit 1":true},"version":"1.0.0"}` ~ '\n';
 
-    auto record = Record!FakeFile(file, JSONValue(true), 0);
+    auto file = FakeFile(text);
+
+    auto record = Record!FakeFile(file, parseJSON(lineOne), 0);
     assert(! record.atLastLine());
 
-    record = Record!FakeFile(file, JSONValue(true), 14);
+    record = Record!FakeFile(file, parseJSON(lineOne), 100);
     assert(record.atLastLine());
 }
 
 @("Record.writeToFile() updates a record at the last line")
 unittest {
     import camino.test_util : FakeFile;
+    import std.json : parseJSON;
+    import std.string : splitLines;
 
-    auto file = FakeFile("[false]\nfalse\n{\"val\": 1}\n");
-    auto record = Record!FakeFile(file, JSONValue([true]), 14);
+    const text = `{"2020-01-01":{"Habit 1":true},"version":"1.0.0"}` ~ '\n'
+        ~ `{"2020-01-02":{"Habit 1":true},"version":"1.0.0"}` ~ '\n'
+        ~ `{"2020-01-03":{"Habit 1":true},"version":"1.0.0"}` ~ '\n';
 
+
+    auto file = FakeFile(text);
+    const lines = text.splitLines();
+
+    auto record = Record!FakeFile(file, parseJSON(lines[2]), 100);
     record.writeToFile();
+
     auto reader = record.file.byLine();
-    assert(reader.front() == "[false]", reader.front());
+
+    assert(reader.front() == lines[0], reader.front());
     reader.popFront();
-    assert(reader.front() == "false", reader.front());
+    assert(reader.front() == lines[1], reader.front());
     reader.popFront();
-    assert(reader.front() == "[true]", reader.front());
+    assert(reader.front() == lines[2], reader.front());
     reader.popFront();
     assert(reader.empty());
 }
