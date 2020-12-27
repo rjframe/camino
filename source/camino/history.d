@@ -397,6 +397,172 @@ unittest {
     );
 }
 
+/** Update the given record with new [Habit] data.
+
+    Missing habits are added, goals are updated, and instances are added if
+    necessary.
+
+    Habit information is removed only if it hasn't been already updated (it is
+    still at its initialized value). For example if a habit status in the record
+    has been updated, then removed from the habit file and refreshRecord() is
+    called, that habit will not be removed.
+
+    Returns:
+
+    A new [Record] with updated habit information.
+*/
+Record!FILE refreshRecord(FILE = File)(Record!FILE record, in Habit[] habits) {
+    import std.algorithm : count, filter;
+
+    const date = record.getDateString();
+    const differentGoals = (in Habit h) =>
+        h.goal.toJSONValue()["goal"] != record[date][h.description]["goal"];
+
+    const doUpdate = habits
+        .filter!(h => h.description in record[date])
+        .count!differentGoals;
+
+    // TODO: Create any habits that don't exist in the original.
+
+    if (doUpdate) {
+        auto newRecord = Record!FILE(
+            record.file,
+            habits.toJSONRecord(record.getDate()),
+            record.pos()
+        );
+        newRecord.writeToFile();
+
+        return newRecord;
+    } else {
+        return record;
+    }
+}
+
+@("refreshRecord updates the goal values")
+unittest {
+    import camino.goal : Goal, GoalValue, Ordering;
+    import camino.schedule : Schedule, Repeat, SpecialRepeat;
+    import camino.test_util : FakeFile;
+    import std.json : parseJSON;
+
+    const text = `{"2020-01-01":{"Habit 1":{"actual":false,"goal":true},`
+        ~ `"Habit 2":{"actual":0,"goal":50},`
+        ~ `"Habit 3":{"goal":50,"instances":[null,null]},`
+        ~ `"Habit 4":{"goal":"<50","instances":[null,null]}},`
+        ~ `"version":"1.0.0"}`;
+
+    auto record = Record!FakeFile(FakeFile(text), text, 0);
+
+    SpecialRepeat habitTwoRepeat = {
+        interval: Repeat.Daily,
+        numberOfIntervals: 1,
+        numberPerInstance: 2,
+        negative: false
+    };
+
+    auto habits = [
+        Habit(
+            Schedule(Repeat.Daily),
+            "Habit 1",
+            Goal(GoalValue(true))
+        ),
+        // Modified.
+        Habit(
+            Schedule(Repeat.Daily),
+            "Habit 2",
+            Goal(GoalValue(20))
+        ),
+        Habit(
+            Schedule(habitTwoRepeat),
+            "Habit 3",
+            Goal(GoalValue(50))
+        ),
+        // Modified.
+        Habit(
+            Schedule(habitTwoRepeat),
+            "Habit 4",
+            Goal(Ordering.GreaterThan, GoalValue(50))
+        ),
+    ];
+
+    auto newRecord = refreshRecord!FakeFile(record, habits);
+
+    assert(newRecord.file.readText().parseJSON ==
+        parseJSON(
+            `{"2020-01-01":{"Habit 1":{"actual":false,"goal":true},`
+            ~ `"Habit 2":{"actual":0,"goal":20},`
+            ~ `"Habit 3":{"goal":50,"instances":[null,null]},`
+            ~ `"Habit 4":{"goal":">50","instances":[null,null]}},`
+            ~ `"version":"1.0.0"}`
+        ),
+        newRecord.file.readText()
+    );
+}
+
+@("refreshRecord updates the number of instances in a goal")
+unittest {
+    import camino.goal : Goal, GoalValue, Ordering;
+    import camino.schedule : Schedule, Repeat, SpecialRepeat;
+    import camino.test_util : FakeFile;
+    import std.json : parseJSON;
+
+    const text = `{"2020-01-01":{"Habit 1":{"actual":false,"goal":true},`
+        ~ `"Habit 2":{"actual":0,"goal":50},`
+        ~ `"Habit 3":{"goal":50,"instances":[null,null]},`
+        ~ `"Habit 4":{"goal":"<50","instances":[null,null]}},`
+        ~ `"version":"1.0.0"}`;
+
+    auto record = Record!FakeFile(FakeFile(text), text, 0);
+
+    SpecialRepeat habitThreeRepeat = {
+        interval: Repeat.Daily,
+        numberOfIntervals: 1,
+        numberPerInstance: 3,
+        negative: false
+    };
+
+    auto habits = [
+        Habit(
+            Schedule(Repeat.Daily),
+            "Habit 1",
+            Goal(GoalValue(true))
+        ),
+        Habit(
+            Schedule(Repeat.Daily),
+            "Habit 2",
+            Goal(GoalValue(20))
+        ),
+        // Modified.
+        Habit(
+            Schedule(habitThreeRepeat),
+            "Habit 3",
+            Goal(GoalValue(50))
+        ),
+        // Modified.
+        Habit(
+            Schedule(habitThreeRepeat),
+            "Habit 4",
+            Goal(Ordering.GreaterThan, GoalValue(50))
+        ),
+    ];
+
+    auto newRecord = refreshRecord!FakeFile(record, habits);
+
+    assert(newRecord.file.readText().parseJSON ==
+        parseJSON(
+            `{"2020-01-01":{"Habit 1":{"actual":false,"goal":true},`
+            ~ `"Habit 2":{"actual":0,"goal":20},`
+            ~ `"Habit 3":{"goal":50,"instances":[null,null,null]},`
+            ~ `"Habit 4":{"goal":">50","instances":[null,null,null]}},`
+            ~ `"version":"1.0.0"}`
+        ),
+        newRecord.file.readText()
+    );
+}
+
+// TODO: Test refreshRecord: we don't delete updated instances, we add habits,
+// remove only non-updated habits.
+
 /** Update the specified `Habit` for the given date.
 
     Params:
@@ -421,7 +587,7 @@ void update(FILE = File)(
     in Update update
 ) {
     // TODO: Throw exception if the record does not already include the habit?
-    // Or (always) call refreshRecord (not yet implemented)?
+    // Or (always) call refreshRecord?
 
     const date = {
         foreach (string k, _; record.record()) {
