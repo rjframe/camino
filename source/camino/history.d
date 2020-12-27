@@ -196,12 +196,16 @@ unittest {
                  the file.
         habits = The list of [Habit]s that will comprise the record.
 
+    Returns:
+
+    A [Record] containing the newly-created record.
+
     Throws:
 
     [Exception] or [std.exception.ErrnoException] on failure to write to the
     file.
 */
-void appendEmptyRecord(FILE = File)(
+Record!FILE appendEmptyRecord(FILE = File)(
     FILE file,
     in Date date,
     const Habit[] habits
@@ -209,14 +213,18 @@ void appendEmptyRecord(FILE = File)(
     in(file.isOpen())
 {
     const record = habits.toJSONRecord(date);
-    const file_pos = file.tell();
+
+    const filePos = file.tell();
+    const newRecPos = file.size();
 
     scope(exit) {
-        file.seek(file_pos);
+        file.seek(filePos);
     }
 
-    file.seek(file.size);
+    file.seek(newRecPos);
     file.writeln(record);
+
+    return Record!FILE(file, record, newRecPos);
 }
 
 @("appendEmptyRecord writes the date object first")
