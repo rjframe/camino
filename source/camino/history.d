@@ -589,13 +589,7 @@ void update(FILE = File)(
     // TODO: Throw exception if the record does not already include the habit?
     // Or (always) call refreshRecord?
 
-    const date = {
-        foreach (string k, _; record.record()) {
-            // We'll only have one object.
-            return k;
-        }
-        throw new InvalidRecord("Record has no date key.");
-    }();
+    const date = record.getDateString();
 
     const newRecord = update.match!(
         (Task t) => JSONValue(t == Task.Complete),
