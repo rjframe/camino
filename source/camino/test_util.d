@@ -198,7 +198,7 @@ struct FakeFile {
         easy assertions.
      */
     @property
-    const(char[]) readText() {
+    const(char[]) readText() const {
         return this.data.text;
     }
 
