@@ -398,26 +398,15 @@ unittest {
     A new [Record] with updated habit information.
 */
 Record!FILE refreshRecord(FILE = File)(Record!FILE record, in Habit[] habits) {
-    import std.algorithm : count, filter;
+    import std.json: parseJSON;
+    // TODO: We need to avoid removing habits already updated, preserve current
+    // status.
 
-    const date = record.getDateString();
-    const differentGoals = (in Habit h) =>
-        h.goal.toJSONValue()["goal"] != record[date][h.description]["goal"];
+    const newHabits = parseJSON(habits.toJSONRecord(record.getDate()));
 
-    const doUpdate = habits
-        .filter!(h => h.description in record[date])
-        .count!differentGoals;
-
-    // TODO: Create any habits that don't exist in the original.
-
-    if (doUpdate) {
-        auto newRecord = Record!FILE(
-            record.file,
-            habits.toJSONRecord(record.getDate()),
-            record.pos()
-        );
+    if (record.record() != newHabits) {
+        auto newRecord = Record!FILE(record.file, newHabits, record.pos());
         newRecord.writeToFile();
-
         return newRecord;
     } else {
         return record;
