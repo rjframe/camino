@@ -418,93 +418,80 @@ unittest {
     import camino.goal : Goal, GoalValue;
     import camino.schedule : Schedule, Repeat;
     import camino.test_util : FakeFile;
-    import std.json : parseJSON;
-
-    import unit_threaded.property : check;
     import std.conv : text;
+    import std.json : parseJSON;
+    import unit_threaded.property : check;
 
-    void runChecks(T)() {
-        check!((int g) => {
-            const json = `{"2020-01-01":{"Habit":{"actual":0,"goal":0}},`
-                ~ `"version":"1.0.0"}`;
+    void runChecks(T, uint numberOfRuns = 100)() {
+        check!((T goal) => {
+            const actual = is(T: bool) ? "false" : "0";
+            const json = `{"2020-01-01":{"Habit":{"actual":` ~ actual
+                ~ `,"goal":` ~ actual ~ `}},` ~ `"version":"1.0.0"}`;
 
-            auto record = Record!FakeFile(FakeFile(json), json, 0);
-
-            auto habits = [
-                Habit(Schedule(Repeat.Daily), "Habit", Goal(GoalValue(g)))
+            const habits = [
+                Habit(Schedule(Repeat.Daily), "Habit", Goal(GoalValue(goal)))
             ];
 
+            auto record = Record!FakeFile(FakeFile(json), json, 0);
             const newRecord = refreshRecord!FakeFile(record, habits);
 
-            return newRecord.file.readText().parseJSON ==
-                parseJSON(`{"2020-01-01":{"Habit":{"actual":0,"goal":` ~ g.text
-                    ~ `}},"version":"1.0.0"}`);
+            return newRecord.file.readText().parseJSON() ==
+                parseJSON(`{"2020-01-01":{"Habit":{"actual":` ~ actual
+                    ~ `,"goal":` ~ goal.text ~ `}},"version":"1.0.0"}`);
         }());
     }
 
-    runChecks!bool();
+    runChecks!(bool, 5); // A bit of a waste...
     runChecks!int();
 }
 
 @("refreshRecord updates the number of instances in a goal")
 unittest {
-    import camino.goal : Goal, GoalValue, Ordering;
-    import camino.schedule : Schedule, Repeat, SpecialRepeat;
+    import camino.goal : Goal, GoalValue;
+    import camino.schedule : Repeat, SpecialRepeat, Schedule;
     import camino.test_util : FakeFile;
     import std.json : parseJSON;
+    import unit_threaded.property : check;
+    import unit_threaded.randomized.gen : Gen;
 
-    const text = `{"2020-01-01":{"Habit 1":{"actual":false,"goal":true},`
-        ~ `"Habit 2":{"actual":0,"goal":50},`
-        ~ `"Habit 3":{"goal":50,"instances":[null,null]},`
-        ~ `"Habit 4":{"goal":"<50","instances":[null,null]}},`
-        ~ `"version":"1.0.0"}`;
+    // 500 is never likely to happen, so we'll double it. If it's too high we'll
+    // have memory problems.
+    check!((Gen!(uint, 1, 1000) instances) => {
+        const json = `{"2020-01-01":{"Habit":{"goal":50,"instances":[`
+            ~ `null,null]}},"version":"1.0.0"}`;
 
-    auto record = Record!FakeFile(FakeFile(text), text, 0);
+        SpecialRepeat repeat = {
+            interval: Repeat.Daily,
+            numberOfIntervals: 1,
+            numberPerInstance: instances,
+            negative: false
+        };
 
-    SpecialRepeat habitThreeRepeat = {
-        interval: Repeat.Daily,
-        numberOfIntervals: 1,
-        numberPerInstance: 3,
-        negative: false
-    };
+        const habits = [
+            Habit(Schedule(repeat), "Habit", Goal(GoalValue(50)))
+        ];
 
-    auto habits = [
-        Habit(
-            Schedule(Repeat.Daily),
-            "Habit 1",
-            Goal(GoalValue(true))
-        ),
-        Habit(
-            Schedule(Repeat.Daily),
-            "Habit 2",
-            Goal(GoalValue(20))
-        ),
-        // Modified.
-        Habit(
-            Schedule(habitThreeRepeat),
-            "Habit 3",
-            Goal(GoalValue(50))
-        ),
-        // Modified.
-        Habit(
-            Schedule(habitThreeRepeat),
-            "Habit 4",
-            Goal(Ordering.GreaterThan, GoalValue(50))
-        ),
-    ];
+        auto record = Record!FakeFile(FakeFile(json), json, 0);
+        const newRecord = refreshRecord!FakeFile(record, habits);
 
-    auto newRecord = refreshRecord!FakeFile(record, habits);
+        const nulls = {
+            import std.array : join;
 
-    assert(newRecord.file.readText().parseJSON ==
-        parseJSON(
-            `{"2020-01-01":{"Habit 1":{"actual":false,"goal":true},`
-            ~ `"Habit 2":{"actual":0,"goal":20},`
-            ~ `"Habit 3":{"goal":50,"instances":[null,null,null]},`
-            ~ `"Habit 4":{"goal":">50","instances":[null,null,null]}},`
-            ~ `"version":"1.0.0"}`
-        ),
-        newRecord.file.readText()
-    );
+            string[] n;
+            n.length = instances;
+            n[] = "null";
+            return n.join(',');
+        }();
+
+        const val =
+            instances < 2
+                ? `"actual":0`
+                : `"instances":[` ~ nulls ~ `]`;
+
+        return newRecord.file.readText().parseJSON() ==
+            parseJSON( `{"2020-01-01":{"Habit":{"goal":50,` ~ val ~ `}},`
+                ~ `"version":"1.0.0"}`);
+    }());
 }
 
 // TODO: Test refreshRecord: we don't delete updated instances, we add habits,
