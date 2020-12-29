@@ -43,10 +43,10 @@ struct SpecialRepeat {
     /** The interval at which the habit is expected to recur. */
     RepeatInterval interval;
     /** Specifies every three days, every other week, etc. */
-    int numberOfIntervals;
+    uint numberOfIntervals;
     /** A number of repetitions per instance associated with the goal. */
     // TODO: This is set in the goals field; should it be in this struct?
-    int numberPerInstance;
+    uint numberPerInstance;
     // TODO assert: SpecialRepeat always uses this instead of
     // Repeat.DailyNegative.
     /** Sets whether this is an undesireable habit. A [SpecialRepeat] will

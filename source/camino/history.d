@@ -344,24 +344,10 @@ unittest {
     };
 
     const habits = [
-        Habit(
-            Schedule(Repeat.Daily),
-            "Habit 1",
-            Goal(GoalValue(true))
-        ),
-        Habit(
-            Schedule(Repeat.Daily),
-            "Habit 2",
-            Goal(GoalValue(20))
-        ),
-        Habit(
-            Schedule(habitFourRepeat),
-            "Habit 3",
-            Goal(GoalValue(50))
-        ),
-        Habit(
-            Schedule(habitFourRepeat),
-            "Habit 4",
+        Habit(Schedule(Repeat.Daily), "Habit 1", Goal(GoalValue(true))),
+        Habit(Schedule(Repeat.Daily), "Habit 2", Goal(GoalValue(20))),
+        Habit(Schedule(habitFourRepeat), "Habit 3", Goal(GoalValue(50))),
+        Habit(Schedule(habitFourRepeat), "Habit 4",
             Goal(Ordering.GreaterThan, GoalValue(50))
         ),
     ];
@@ -440,63 +426,35 @@ Record!FILE refreshRecord(FILE = File)(Record!FILE record, in Habit[] habits) {
 
 @("refreshRecord updates the goal values")
 unittest {
-    import camino.goal : Goal, GoalValue, Ordering;
-    import camino.schedule : Schedule, Repeat, SpecialRepeat;
+    import camino.goal : Goal, GoalValue;
+    import camino.schedule : Schedule, Repeat;
     import camino.test_util : FakeFile;
     import std.json : parseJSON;
 
-    const text = `{"2020-01-01":{"Habit 1":{"actual":false,"goal":true},`
-        ~ `"Habit 2":{"actual":0,"goal":50},`
-        ~ `"Habit 3":{"goal":50,"instances":[null,null]},`
-        ~ `"Habit 4":{"goal":"<50","instances":[null,null]}},`
-        ~ `"version":"1.0.0"}`;
+    import unit_threaded.property : check;
+    import std.conv : text;
 
-    auto record = Record!FakeFile(FakeFile(text), text, 0);
+    void runChecks(T)() {
+        check!((int g) => {
+            const json = `{"2020-01-01":{"Habit":{"actual":0,"goal":0}},`
+                ~ `"version":"1.0.0"}`;
 
-    SpecialRepeat habitTwoRepeat = {
-        interval: Repeat.Daily,
-        numberOfIntervals: 1,
-        numberPerInstance: 2,
-        negative: false
-    };
+            auto record = Record!FakeFile(FakeFile(json), json, 0);
 
-    auto habits = [
-        Habit(
-            Schedule(Repeat.Daily),
-            "Habit 1",
-            Goal(GoalValue(true))
-        ),
-        // Modified.
-        Habit(
-            Schedule(Repeat.Daily),
-            "Habit 2",
-            Goal(GoalValue(20))
-        ),
-        Habit(
-            Schedule(habitTwoRepeat),
-            "Habit 3",
-            Goal(GoalValue(50))
-        ),
-        // Modified.
-        Habit(
-            Schedule(habitTwoRepeat),
-            "Habit 4",
-            Goal(Ordering.GreaterThan, GoalValue(50))
-        ),
-    ];
+            auto habits = [
+                Habit(Schedule(Repeat.Daily), "Habit", Goal(GoalValue(g)))
+            ];
 
-    auto newRecord = refreshRecord!FakeFile(record, habits);
+            const newRecord = refreshRecord!FakeFile(record, habits);
 
-    assert(newRecord.file.readText().parseJSON ==
-        parseJSON(
-            `{"2020-01-01":{"Habit 1":{"actual":false,"goal":true},`
-            ~ `"Habit 2":{"actual":0,"goal":20},`
-            ~ `"Habit 3":{"goal":50,"instances":[null,null]},`
-            ~ `"Habit 4":{"goal":">50","instances":[null,null]}},`
-            ~ `"version":"1.0.0"}`
-        ),
-        newRecord.file.readText()
-    );
+            return newRecord.file.readText().parseJSON ==
+                parseJSON(`{"2020-01-01":{"Habit":{"actual":0,"goal":` ~ g.text
+                    ~ `}},"version":"1.0.0"}`);
+        }());
+    }
+
+    runChecks!bool();
+    runChecks!int();
 }
 
 @("refreshRecord updates the number of instances in a goal")
