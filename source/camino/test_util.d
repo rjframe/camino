@@ -111,6 +111,7 @@ struct FakeFile {
                 this.data.pos += arg.length;
             }
         }
+        this.data.hasWritten = true;
     }
 
     /** Write to the FakeFile's text buffer at its current file position, with a
@@ -120,8 +121,9 @@ struct FakeFile {
         if (args.length == 0) this.write('\n');
         else {
             foreach (const(char[]) arg; args) {
-                this.write(arg, '\n');
+                this.write(arg);
             }
+            this.write('\n');
         }
     }
 
@@ -190,6 +192,7 @@ struct FakeFile {
     */
     void truncate(long size) {
         this.data.text = this.data.text[0..size];
+        this.data.hasWritten = true;
     }
 
     /** Get the full text of the file.
@@ -200,6 +203,12 @@ struct FakeFile {
     @property
     const(char[]) readText() const {
         return this.data.text;
+    }
+
+    /** Return whether the FakeFile has been written to. */
+    @property
+    bool modified() const {
+        return this.data.hasWritten;
     }
 
     private:
@@ -213,6 +222,8 @@ struct FakeFile {
         char[] text;
         ulong pos = 0;
         bool isOpen = true;
+        /// Will be true if the file was modified after creation.
+        bool hasWritten = false;
 
         pure
         this(const(char[]) text) {

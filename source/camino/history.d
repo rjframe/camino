@@ -494,7 +494,76 @@ unittest {
     }());
 }
 
-// TODO: Test refreshRecord: we don't delete updated instances, we add habits,
+@("refreshRecord adds a new habit")
+unittest {
+    import camino.goal : Goal, GoalValue;
+    import camino.schedule : Repeat, Schedule;
+    import camino.test_util : FakeFile;
+    import std.json : parseJSON;
+
+    const json = `{"2020-01-01":{"Habit":{"actual":0,"goal":5}},`
+        ~ `"version":"1.0.0"}`;
+
+    const habits = [
+        Habit(Schedule(Repeat.Daily), "Habit", Goal(GoalValue(5))),
+        Habit(Schedule(Repeat.Daily), "Habit 2", Goal(GoalValue(4)))
+    ];
+
+    auto record = Record!FakeFile(FakeFile(json), json, 0);
+    const newRecord = refreshRecord!FakeFile(record, habits);
+
+    assert(newRecord.file.readText().parseJSON() ==
+        parseJSON(`{"2020-01-01":{"Habit":{"actual":0,"goal":5},`
+            ~ `"Habit 2":{"actual":0,"goal":4}},"version":"1.0.0"}`),
+        newRecord.file.readText()
+    );
+}
+
+@("refreshRecord removes a habit")
+unittest {
+    import camino.goal : Goal, GoalValue;
+    import camino.schedule : Repeat, Schedule;
+    import camino.test_util : FakeFile;
+    import std.json : parseJSON;
+
+    const json = `{"2020-01-01":{"Habit":{"actual":0,"goal":5},`
+        ~ `"Habit 2":{"actual":0,"goal":4}},"version":"1.0.0"}`;
+
+    const habits = [
+        Habit(Schedule(Repeat.Daily), "Habit", Goal(GoalValue(5)))
+    ];
+
+    auto record = Record!FakeFile(FakeFile(json), json, 0);
+    const newRecord = refreshRecord!FakeFile(record, habits);
+
+    assert(newRecord.file.readText().parseJSON() ==
+        parseJSON(`{"2020-01-01":{"Habit":{"actual":0,"goal":5}},`
+            ~ `"version":"1.0.0"}`),
+        newRecord.file.readText()
+    );
+}
+
+@("refreshRecord does not write to the filesystem if there was no change")
+unittest {
+    import camino.goal : Goal, GoalValue;
+    import camino.schedule : Repeat, Schedule;
+    import camino.test_util : FakeFile;
+
+    const json = `{"2020-01-01":{"Habit":{"actual":0,"goal":5}},`
+        ~ `"version":"1.0.0"}`;
+
+    const habits = [
+        Habit(Schedule(Repeat.Daily), "Habit", Goal(GoalValue(5)))
+    ];
+
+    auto record = Record!FakeFile(FakeFile(json), json, 0);
+    const newRecord = refreshRecord!FakeFile(record, habits);
+
+    assert(record == newRecord);
+    assert(record.file.modified() == false);
+}
+
+// TODO: Test refreshRecord: we don't delete updated instances,
 // remove only non-updated habits.
 
 /** Update the specified `Habit` for the given date.
