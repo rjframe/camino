@@ -2,6 +2,16 @@
 
 Flexible command-line habit tracking.
 
+## Status
+
+Putting this on hold to work on [uPIM](https://git.sr.ht/~rjframe/upim) - a
+personal information management library. It may be possible to use that to solve
+this problem -- if so I will be building habit tracking on top of uPIM.
+
+If not, I'll be back to complete this. Note to self: you need a separate file to
+track changes to the habits file over time - the history file alone won't allow
+creating reports very well.
+
 
 ## Table of Contents
 
